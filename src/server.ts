@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { authRoutes } from './api/auth/index.js';
 import { usersRoutes } from './api/users/index.js';
 import { teamsRoutes } from './api/teams/index.js';
@@ -10,6 +11,9 @@ import { companiesRoutes } from './api/companies/index.js';
 import { contactsRoutes } from './api/contacts/index.js';
 import { dealsRoutes } from './api/deals/index.js';
 import { activitiesRoutes } from './api/activities/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({
   logger: true,
