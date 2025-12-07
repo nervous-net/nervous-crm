@@ -128,13 +128,14 @@ enum InviteStatus {
 // ============================================
 
 model Company {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
   domain    String?
   industry  String?
   teamId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   contacts Contact[]
@@ -143,11 +144,12 @@ model Company {
   @@unique([teamId, name]) // Company names must be unique per team
   @@index([teamId])
   @@index([name])
+  @@index([deletedAt])
   @@map("companies")
 }
 
 model Contact {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
   email     String?
   phone     String?
@@ -155,8 +157,9 @@ model Contact {
   companyId String?
   ownerId   String
   teamId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
   company    Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
@@ -170,6 +173,7 @@ model Contact {
   @@index([ownerId])
   @@index([name])
   @@index([email])
+  @@index([deletedAt])
   @@map("contacts")
 }
 
@@ -184,6 +188,7 @@ model Deal {
   ownerId     String
   teamId      String
   closedAt    DateTime?
+  deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -199,6 +204,7 @@ model Deal {
   @@index([ownerId])
   @@index([stage])
   @@index([teamId, stage]) // Composite for pipeline queries
+  @@index([deletedAt])
   @@map("deals")
 }
 
@@ -222,6 +228,7 @@ model Activity {
   contactId   String?
   userId      String
   teamId      String
+  deletedAt   DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -238,6 +245,7 @@ model Activity {
   @@index([completedAt])
   @@index([teamId, dueAt]) // Composite for upcoming activities
   @@index([teamId, completedAt]) // Composite for overdue queries
+  @@index([deletedAt])
   @@map("activities")
 }
 

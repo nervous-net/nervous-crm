@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
+import csrf from '@fastify/csrf-protection';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -32,9 +33,26 @@ fastify.register(cors, {
   credentials: true,
 });
 
+// CSRF protection for state-changing requests
+fastify.register(csrf, {
+  sessionPlugin: '@fastify/cookie',
+  cookieOpts: {
+    httpOnly: true,
+    secure: config.nodeEnv === 'production',
+    sameSite: 'lax',
+    path: '/',
+  },
+});
+
 // Health check
 fastify.get('/health', async () => {
   return { status: 'ok' };
+});
+
+// CSRF token endpoint - frontend calls this to get a token
+fastify.get('/api/v1/csrf-token', async (_request, reply) => {
+  const token = await reply.generateCsrf();
+  return { data: { csrfToken: token } };
 });
 
 // API routes

@@ -30,7 +30,7 @@ export async function validateTeamMember(teamId: string, userId: string): Promis
  */
 export async function validateTeamCompany(teamId: string, companyId: string): Promise<void> {
   const company = await prisma.company.findFirst({
-    where: { id: companyId, teamId },
+    where: { id: companyId, teamId, deletedAt: null },
     select: { id: true },
   });
 
@@ -44,7 +44,7 @@ export async function validateTeamCompany(teamId: string, companyId: string): Pr
  */
 export async function validateTeamContact(teamId: string, contactId: string): Promise<void> {
   const contact = await prisma.contact.findFirst({
-    where: { id: contactId, teamId },
+    where: { id: contactId, teamId, deletedAt: null },
     select: { id: true },
   });
 

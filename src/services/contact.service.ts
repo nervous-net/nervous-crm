@@ -13,6 +13,7 @@ export class ContactService {
 
     const where: Prisma.ContactWhereInput = {
       teamId,
+      deletedAt: null,
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -60,7 +61,7 @@ export class ContactService {
     const includes = parseIncludes(include, VALID_INCLUDES);
 
     return prisma.contact.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
       include: {
         ...includes,
         owner: {
@@ -105,7 +106,7 @@ export class ContactService {
 
   async update(teamId: string, id: string, input: UpdateContactInput) {
     const contact = await prisma.contact.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!contact) {
@@ -136,14 +137,17 @@ export class ContactService {
 
   async delete(teamId: string, id: string) {
     const contact = await prisma.contact.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!contact) {
       return false;
     }
 
-    await prisma.contact.delete({ where: { id } });
+    await prisma.contact.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
     return true;
   }
 }

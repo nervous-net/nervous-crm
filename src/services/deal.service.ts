@@ -13,6 +13,7 @@ export class DealService {
 
     const where: Prisma.DealWhereInput = {
       teamId,
+      deletedAt: null,
       ...(search && {
         title: { contains: search, mode: 'insensitive' },
       }),
@@ -60,7 +61,7 @@ export class DealService {
 
     // Single query for all deals instead of 6 separate queries
     const allDeals = await prisma.deal.findMany({
-      where: { teamId },
+      where: { teamId, deletedAt: null },
       orderBy: { updatedAt: 'desc' },
       include: {
         company: { select: { id: true, name: true } },
@@ -101,7 +102,7 @@ export class DealService {
     const includes = parseIncludes(include, VALID_INCLUDES);
 
     return prisma.deal.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
       include: {
         ...includes,
         owner: {
@@ -153,7 +154,7 @@ export class DealService {
 
   async update(teamId: string, id: string, input: UpdateDealInput) {
     const deal = await prisma.deal.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!deal) {
@@ -202,14 +203,17 @@ export class DealService {
 
   async delete(teamId: string, id: string) {
     const deal = await prisma.deal.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!deal) {
       return false;
     }
 
-    await prisma.deal.delete({ where: { id } });
+    await prisma.deal.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
     return true;
   }
 }

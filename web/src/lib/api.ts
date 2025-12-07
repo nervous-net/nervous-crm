@@ -3,18 +3,62 @@ const API_BASE = import.meta.env.PROD
   : '/api/v1';
 
 class ApiClient {
+  private csrfToken: string | null = null;
+  private csrfPromise: Promise<string | null> | null = null;
+
+  private async getCsrfToken(): Promise<string | null> {
+    if (this.csrfToken) {
+      return this.csrfToken;
+    }
+
+    // Prevent multiple simultaneous fetches
+    if (this.csrfPromise) {
+      return this.csrfPromise;
+    }
+
+    this.csrfPromise = fetch(`${API_BASE}/csrf-token`, {
+      credentials: 'include',
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        this.csrfToken = data.data.csrfToken;
+        this.csrfPromise = null;
+        return this.csrfToken;
+      })
+      .catch(() => {
+        this.csrfPromise = null;
+        return null;
+      });
+
+    return this.csrfPromise;
+  }
+
   private async request<T>(method: string, path: string, data?: unknown): Promise<T> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add CSRF token for mutating requests
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      const csrfToken = await this.getCsrfToken();
+      if (csrfToken) {
+        headers['x-csrf-token'] = csrfToken;
+      }
+    }
+
     const response = await fetch(`${API_BASE}${path}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: { message: 'Network error' } }));
+      // Clear CSRF token on 403 (might be invalid)
+      if (response.status === 403) {
+        this.csrfToken = null;
+      }
       throw new Error(error.error?.message || 'Request failed');
     }
 

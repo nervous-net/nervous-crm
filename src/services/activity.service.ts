@@ -24,6 +24,7 @@ export class ActivityService {
 
     const where: Prisma.ActivityWhereInput = {
       teamId,
+      deletedAt: null,
       ...(type && { type: type as ActivityType }),
       ...(dealId && { dealId }),
       ...(contactId && { contactId }),
@@ -71,7 +72,7 @@ export class ActivityService {
     const includes = parseIncludes(include, VALID_INCLUDES);
 
     return prisma.activity.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
       include: {
         ...includes,
         user: {
@@ -103,7 +104,7 @@ export class ActivityService {
 
   async update(teamId: string, id: string, input: UpdateActivityInput) {
     const activity = await prisma.activity.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!activity) {
@@ -131,7 +132,7 @@ export class ActivityService {
 
   async toggleComplete(teamId: string, id: string) {
     const activity = await prisma.activity.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!activity) {
@@ -153,14 +154,17 @@ export class ActivityService {
 
   async delete(teamId: string, id: string) {
     const activity = await prisma.activity.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!activity) {
       return false;
     }
 
-    await prisma.activity.delete({ where: { id } });
+    await prisma.activity.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
     return true;
   }
 
@@ -171,6 +175,7 @@ export class ActivityService {
     return prisma.activity.findMany({
       where: {
         teamId,
+        deletedAt: null,
         ...(userId && { userId }),
         completedAt: null,
         dueAt: {
@@ -192,6 +197,7 @@ export class ActivityService {
     return prisma.activity.findMany({
       where: {
         teamId,
+        deletedAt: null,
         ...(userId && { userId }),
         completedAt: null,
         dueAt: { lt: new Date() },

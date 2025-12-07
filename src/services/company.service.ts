@@ -11,6 +11,7 @@ export class CompanyService {
 
     const where: Prisma.CompanyWhereInput = {
       teamId,
+      deletedAt: null,
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -53,7 +54,7 @@ export class CompanyService {
 
   async getById(teamId: string, id: string) {
     return prisma.company.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
       include: {
         _count: {
           select: { contacts: true, deals: true },
@@ -73,7 +74,7 @@ export class CompanyService {
 
   async update(teamId: string, id: string, input: UpdateCompanyInput) {
     const company = await prisma.company.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!company) {
@@ -88,14 +89,17 @@ export class CompanyService {
 
   async delete(teamId: string, id: string) {
     const company = await prisma.company.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, deletedAt: null },
     });
 
     if (!company) {
       return false;
     }
 
-    await prisma.company.delete({ where: { id } });
+    await prisma.company.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
     return true;
   }
 }
