@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { config } from './lib/config.js';
 import { authRoutes } from './api/auth/index.js';
 import { usersRoutes } from './api/users/index.js';
 import { teamsRoutes } from './api/teams/index.js';
@@ -21,13 +22,11 @@ const fastify = Fastify({
 
 // Register plugins
 fastify.register(cookie, {
-  secret: process.env.COOKIE_SECRET || 'default-secret-change-in-production',
+  secret: config.cookieSecret,
 });
 
 fastify.register(cors, {
-  origin: process.env.NODE_ENV === 'production'
-    ? process.env.FRONTEND_URL
-    : 'http://localhost:5173',
+  origin: config.frontendUrl,
   credentials: true,
 });
 
@@ -46,7 +45,7 @@ fastify.register(dealsRoutes, { prefix: '/api/v1/deals' });
 fastify.register(activitiesRoutes, { prefix: '/api/v1/activities' });
 
 // Serve static files in production
-if (process.env.NODE_ENV === 'production') {
+if (config.nodeEnv === 'production') {
   fastify.register(fastifyStatic, {
     root: path.join(__dirname, '../web/dist'),
     prefix: '/',
@@ -63,8 +62,7 @@ if (process.env.NODE_ENV === 'production') {
 
 const start = async () => {
   try {
-    const port = parseInt(process.env.PORT || '3000', 10);
-    await fastify.listen({ port, host: '0.0.0.0' });
+    await fastify.listen({ port: config.port, host: '0.0.0.0' });
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

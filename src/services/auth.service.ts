@@ -209,25 +209,31 @@ export class AuthService {
   }
 
   private async createSession(userId: string, teamId: string, role: Role): Promise<AuthTokens> {
-    const session = await prisma.session.create({
-      data: {
-        userId,
-        refreshToken: '', // Placeholder, will update
-        expiresAt: getRefreshTokenExpiry(),
-      },
+    // Use transaction to ensure session creation is atomic
+    const result = await prisma.$transaction(async (tx) => {
+      const session = await tx.session.create({
+        data: {
+          userId,
+          refreshToken: '', // Temporary placeholder
+          expiresAt: getRefreshTokenExpiry(),
+        },
+      });
+
+      const [accessToken, refreshToken] = await Promise.all([
+        createAccessToken({ userId, teamId, role }),
+        createRefreshToken({ sessionId: session.id }),
+      ]);
+
+      // Update session with actual refresh token within same transaction
+      await tx.session.update({
+        where: { id: session.id },
+        data: { refreshToken },
+      });
+
+      return { accessToken, refreshToken };
     });
 
-    const [accessToken, refreshToken] = await Promise.all([
-      createAccessToken({ userId, teamId, role }),
-      createRefreshToken({ sessionId: session.id }),
-    ]);
-
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { refreshToken },
-    });
-
-    return { accessToken, refreshToken };
+    return result;
   }
 }
 

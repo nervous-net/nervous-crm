@@ -53,31 +53,41 @@ export class DealService {
   async getByStage(teamId: string) {
     const stages: DealStage[] = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 
-    const pipeline = await Promise.all(
-      stages.map(async (stage) => {
-        const deals = await prisma.deal.findMany({
-          where: { teamId, stage },
-          orderBy: { updatedAt: 'desc' },
-          include: {
-            company: { select: { id: true, name: true } },
-            contact: { select: { id: true, name: true } },
-            owner: { select: { id: true, name: true } },
-          },
-        });
+    // Single query for all deals instead of 6 separate queries
+    const allDeals = await prisma.deal.findMany({
+      where: { teamId },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        company: { select: { id: true, name: true } },
+        contact: { select: { id: true, name: true } },
+        owner: { select: { id: true, name: true } },
+      },
+    });
 
-        const totalValue = deals.reduce(
-          (sum, deal) => sum + (deal.value?.toNumber() || 0),
-          0
-        );
+    // Group deals by stage in memory
+    const dealsByStage = new Map<DealStage, typeof allDeals>();
+    for (const stage of stages) {
+      dealsByStage.set(stage, []);
+    }
+    for (const deal of allDeals) {
+      dealsByStage.get(deal.stage)?.push(deal);
+    }
 
-        return {
-          stage,
-          deals,
-          count: deals.length,
-          totalValue,
-        };
-      })
-    );
+    // Build pipeline response
+    const pipeline = stages.map((stage) => {
+      const deals = dealsByStage.get(stage) || [];
+      const totalValue = deals.reduce(
+        (sum, deal) => sum + (deal.value?.toNumber() || 0),
+        0
+      );
+
+      return {
+        stage,
+        deals,
+        count: deals.length,
+        totalValue,
+      };
+    });
 
     return pipeline;
   }
