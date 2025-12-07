@@ -34,9 +34,12 @@ class ApiClient {
   }
 
   private async request<T>(method: string, path: string, data?: unknown): Promise<T> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const headers: Record<string, string> = {};
+
+    // Only set Content-Type if we have data to send
+    if (data !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     // Add CSRF token for mutating requests
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -50,7 +53,7 @@ class ApiClient {
       method,
       headers,
       credentials: 'include',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data !== undefined ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
