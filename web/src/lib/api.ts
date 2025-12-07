@@ -1,5 +1,5 @@
 const API_BASE = import.meta.env.PROD
-  ? 'https://nevous-crm.fly.dev/api/v1'
+  ? 'https://nervous-crm.fly.dev/api/v1'
   : '/api/v1';
 
 class ApiClient {

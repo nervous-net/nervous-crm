@@ -15,7 +15,7 @@ Set these secrets in Fly.io:
 - `JWT_SECRET` - Run `openssl rand -hex 32`
 - `JWT_REFRESH_SECRET` - Run `openssl rand -hex 32`
 - `COOKIE_SECRET` - Run `openssl rand -hex 32`
-- `FRONTEND_URL` - Your production URL (e.g., https://nevous-crm.fly.dev)
+- `FRONTEND_URL` - Your production URL (e.g., https://nervous-crm.fly.dev)
 
 ## Deploy Commands
 
@@ -24,13 +24,13 @@ Set these secrets in Fly.io:
 fly auth login
 
 # Create app
-fly apps create nevous-crm
+fly apps create nervous-crm
 
 # Create Postgres database
-fly postgres create --name nevous-crm-db
+fly postgres create --name nervous-crm-db
 
 # Attach database to app
-fly postgres attach nevous-crm-db
+fly postgres attach nervous-crm-db
 
 # Set secrets
 fly secrets set JWT_SECRET=$(openssl rand -hex 32)
@@ -55,7 +55,7 @@ fly scale count 2
 
 ## Post-deployment
 
-- [ ] Verify health endpoint: `curl https://nevous-crm.fly.dev/health`
+- [ ] Verify health endpoint: `curl https://nervous-crm.fly.dev/health`
 - [ ] Test registration flow
 - [ ] Test login flow
 - [ ] Verify all pages load

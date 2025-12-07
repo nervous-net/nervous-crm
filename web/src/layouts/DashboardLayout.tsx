@@ -41,7 +41,7 @@ export function DashboardLayout() {
       {/* Sidebar */}
       <aside className="w-64 bg-card shadow-lg flex flex-col">
         <div className="p-6 border-b border-border">
-          <h1 className="text-xl font-bold text-primary">Nevous CRM</h1>
+          <h1 className="text-xl font-bold text-primary">Nervous CRM</h1>
           <p className="text-sm text-muted-foreground mt-1">{user.teamName}</p>
         </div>
 

@@ -1,6 +1,6 @@
 # Sentry Error Tracking
 
-This document explains how to set up and use Sentry for error tracking in Nevous CRM.
+This document explains how to set up and use Sentry for error tracking in Nervous CRM.
 
 ## Overview
 

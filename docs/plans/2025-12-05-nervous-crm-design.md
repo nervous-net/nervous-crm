@@ -1,4 +1,4 @@
-# nevous-crm Design Document
+# nervous-crm Design Document
 
 ## Overview
 
@@ -33,7 +33,7 @@ Modular monolith - single Fastify backend with well-separated modules, React SPA
 ### Project Structure
 
 ```
-nevous-crm/
+nervous-crm/
 ├── src/
 │   ├── api/              # Fastify routes & handlers
 │   │   ├── contacts/
@@ -154,7 +154,7 @@ All queries automatically scoped to user's team.
 ### Fly.io Setup
 
 ```
-nevous-crm (Fly App)
+nervous-crm (Fly App)
 ├── web machine(s)     # Fastify serves API + static React build
 └── Fly Postgres       # Managed PostgreSQL cluster
 ```

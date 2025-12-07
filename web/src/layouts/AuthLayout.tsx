@@ -21,7 +21,7 @@ export function AuthLayout() {
       <div className="w-full max-w-md">
         <div className="bg-card rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-primary">Nevous CRM</h1>
+            <h1 className="text-3xl font-bold text-primary">Nervous CRM</h1>
             <p className="text-muted-foreground mt-2">Manage your community relationships</p>
           </div>
           <Outlet />

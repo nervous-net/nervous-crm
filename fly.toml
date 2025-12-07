@@ -1,4 +1,4 @@
-app = "nevous-crm"
+app = "nervous-crm"
 primary_region = "iad"
 
 [build]

@@ -1,4 +1,4 @@
-# Nevous CRM MVP Implementation Plan
+# Nervous CRM MVP Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -28,7 +28,7 @@
 
 ```json
 {
-  "name": "nevous-crm",
+  "name": "nervous-crm",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -230,7 +230,7 @@ start();
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nevous CRM</title>
+    <title>Nervous CRM</title>
   </head>
   <body>
     <div id="root"></div>
@@ -248,7 +248,7 @@ import ReactDOM from 'react-dom/client';
 function App() {
   return (
     <div>
-      <h1>Nevous CRM</h1>
+      <h1>Nervous CRM</h1>
       <p>Coming soon...</p>
     </div>
   );
@@ -495,7 +495,7 @@ function App() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-primary">Nevous CRM</h1>
+        <h1 className="text-4xl font-bold text-primary">Nervous CRM</h1>
         <p className="mt-2 text-muted-foreground">Coming soon...</p>
       </div>
     </div>
@@ -512,7 +512,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 **Step 8: Test frontend dev server**
 
 Run: `npm run dev:web`
-Expected: Vite starts on port 5173, page shows styled "Nevous CRM" heading
+Expected: Vite starts on port 5173, page shows styled "Nervous CRM" heading
 
 **Step 9: Commit**
 
@@ -752,7 +752,7 @@ enum ActivityType {
 
 ```
 # Database
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/nevous_crm?schema=public"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/nervous_crm?schema=public"
 
 # Auth
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
@@ -774,7 +774,7 @@ Expected: Prisma Client generated successfully
 
 **Step 5: Start local PostgreSQL (if not running)**
 
-Run: `docker run --name nevous-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=nevous_crm -p 5432:5432 -d postgres:16`
+Run: `docker run --name nervous-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=nervous_crm -p 5432:5432 -d postgres:16`
 Expected: Container starts (or use existing PostgreSQL)
 
 **Step 6: Run initial migration**
@@ -3943,7 +3943,7 @@ export function AuthLayout() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30">
       <div className="w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">Nevous CRM</h1>
+          <h1 className="text-3xl font-bold text-primary">Nervous CRM</h1>
         </div>
         <Outlet />
       </div>
@@ -3998,7 +3998,7 @@ export function DashboardLayout() {
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r flex flex-col">
         <div className="p-6">
-          <h1 className="text-xl font-bold text-primary">Nevous CRM</h1>
+          <h1 className="text-xl font-bold text-primary">Nervous CRM</h1>
           <p className="text-sm text-muted-foreground mt-1">{user.teamName}</p>
         </div>
 
@@ -6449,7 +6449,7 @@ git commit -m "feat: add placeholder pages for companies, activities, settings"
 **Step 1: Create fly.toml**
 
 ```toml
-app = "nevous-crm"
+app = "nervous-crm"
 primary_region = "iad"
 
 [build]
@@ -6552,13 +6552,13 @@ if (process.env.NODE_ENV === 'production') {
 fly auth login
 
 # Create app
-fly apps create nevous-crm
+fly apps create nervous-crm
 
 # Create Postgres database
-fly postgres create --name nevous-crm-db
+fly postgres create --name nervous-crm-db
 
 # Attach database to app
-fly postgres attach nevous-crm-db
+fly postgres attach nervous-crm-db
 
 # Set secrets
 fly secrets set JWT_SECRET=$(openssl rand -hex 32)
@@ -6606,7 +6606,7 @@ Set these secrets in Fly.io:
 - `JWT_SECRET` - Run `openssl rand -hex 32`
 - `JWT_REFRESH_SECRET` - Run `openssl rand -hex 32`
 - `COOKIE_SECRET` - Run `openssl rand -hex 32`
-- `FRONTEND_URL` - Your production URL (e.g., https://nevous-crm.fly.dev)
+- `FRONTEND_URL` - Your production URL (e.g., https://nervous-crm.fly.dev)
 
 ## Deploy Commands
 
@@ -6629,7 +6629,7 @@ fly scale count 2
 
 ## Post-deployment
 
-- [ ] Verify health endpoint: `curl https://nevous-crm.fly.dev/health`
+- [ ] Verify health endpoint: `curl https://nervous-crm.fly.dev/health`
 - [ ] Test registration flow
 - [ ] Test login flow
 - [ ] Verify all pages load
@@ -6663,7 +6663,7 @@ Each task is broken into 5-12 bite-sized steps that can be completed in 2-5 minu
 
 ---
 
-**Plan complete and saved to `docs/plans/2025-12-05-nevous-crm-implementation.md`.**
+**Plan complete and saved to `docs/plans/2025-12-05-nervous-crm-implementation.md`.**
 
 **Two execution options:**
 
