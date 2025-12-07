@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../lib/auth.js';
 import { contactService } from '../../services/contact.service.js';
+import { ValidationError } from '../../lib/validation.js';
 import {
   createContactSchema,
   updateContactSchema,
@@ -66,12 +67,21 @@ export async function contactsRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
-      const contact = await contactService.create(
-        request.auth!.teamId,
-        request.auth!.userId,
-        parseResult.data
-      );
-      return reply.status(201).send({ data: contact });
+      try {
+        const contact = await contactService.create(
+          request.auth!.teamId,
+          request.auth!.userId,
+          parseResult.data
+        );
+        return reply.status(201).send({ data: contact });
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          return reply.status(400).send({
+            error: { code: error.code, message: error.message },
+          });
+        }
+        throw error;
+      }
     }
   );
 
@@ -93,19 +103,28 @@ export async function contactsRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
-      const contact = await contactService.update(
-        request.auth!.teamId,
-        request.params.id,
-        parseResult.data
-      );
+      try {
+        const contact = await contactService.update(
+          request.auth!.teamId,
+          request.params.id,
+          parseResult.data
+        );
 
-      if (!contact) {
-        return reply.status(404).send({
-          error: { code: 'NOT_FOUND', message: 'Contact not found' },
-        });
+        if (!contact) {
+          return reply.status(404).send({
+            error: { code: 'NOT_FOUND', message: 'Contact not found' },
+          });
+        }
+
+        return { data: contact };
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          return reply.status(400).send({
+            error: { code: error.code, message: error.message },
+          });
+        }
+        throw error;
       }
-
-      return { data: contact };
     }
   );
 

@@ -1,5 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
 import { authService, AuthError } from '../../services/auth.service.js';
+import { config } from '../../lib/config.js';
 import {
   registerSchema,
   loginSchema,
@@ -11,15 +13,33 @@ import {
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: config.nodeEnv === 'production',
   sameSite: 'lax' as const,
   path: '/',
 };
 
+// Rate limit config for auth endpoints (stricter limits)
+const authRateLimitConfig = {
+  max: 5, // 5 attempts
+  timeWindow: '1 minute',
+  errorResponseBuilder: () => ({
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many attempts. Please try again later.',
+    },
+  }),
+};
+
 export async function authRoutes(fastify: FastifyInstance): Promise<void> {
+  // Register rate limiting for this route group
+  await fastify.register(rateLimit, {
+    max: 100, // Default: 100 requests per minute for general auth endpoints
+    timeWindow: '1 minute',
+  });
   // POST /api/v1/auth/register
   fastify.post<{ Body: RegisterInput }>(
     '/register',
+    { config: { rateLimit: authRateLimitConfig } },
     async (request: FastifyRequest<{ Body: RegisterInput }>, reply: FastifyReply) => {
       const parseResult = registerSchema.safeParse(request.body);
       if (!parseResult.success) {
@@ -60,6 +80,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
   // POST /api/v1/auth/login
   fastify.post<{ Body: LoginInput }>(
     '/login',
+    { config: { rateLimit: authRateLimitConfig } },
     async (request: FastifyRequest<{ Body: LoginInput }>, reply: FastifyReply) => {
       const parseResult = loginSchema.safeParse(request.body);
       if (!parseResult.success) {
@@ -151,6 +172,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
   // POST /api/v1/auth/accept-invite
   fastify.post<{ Body: AcceptInviteInput }>(
     '/accept-invite',
+    { config: { rateLimit: authRateLimitConfig } },
     async (request: FastifyRequest<{ Body: AcceptInviteInput }>, reply: FastifyReply) => {
       const parseResult = acceptInviteSchema.safeParse(request.body);
       if (!parseResult.success) {

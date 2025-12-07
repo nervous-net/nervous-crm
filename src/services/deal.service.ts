@@ -1,6 +1,7 @@
 import { prisma } from '../db/client.js';
 import type { Prisma, DealStage } from '@prisma/client';
 import type { CreateDealInput, UpdateDealInput, DealQuery } from '../shared/schemas/index.js';
+import { validateTeamMember, validateTeamCompany, validateTeamContact } from '../lib/validation.js';
 
 export class DealService {
   async list(teamId: string, query: DealQuery) {
@@ -110,6 +111,21 @@ export class DealService {
   }
 
   async create(teamId: string, userId: string, input: CreateDealInput) {
+    // Validate ownerId belongs to team if specified
+    if (input.ownerId && input.ownerId !== userId) {
+      await validateTeamMember(teamId, input.ownerId);
+    }
+
+    // Validate companyId belongs to team if specified
+    if (input.companyId) {
+      await validateTeamCompany(teamId, input.companyId);
+    }
+
+    // Validate contactId belongs to team if specified
+    if (input.contactId) {
+      await validateTeamContact(teamId, input.contactId);
+    }
+
     return prisma.deal.create({
       data: {
         title: input.title,
@@ -138,6 +154,21 @@ export class DealService {
 
     if (!deal) {
       return null;
+    }
+
+    // Validate ownerId belongs to team if being changed
+    if (input.ownerId) {
+      await validateTeamMember(teamId, input.ownerId);
+    }
+
+    // Validate companyId belongs to team if being changed
+    if (input.companyId) {
+      await validateTeamCompany(teamId, input.companyId);
+    }
+
+    // Validate contactId belongs to team if being changed
+    if (input.contactId) {
+      await validateTeamContact(teamId, input.contactId);
     }
 
     // If stage is changing to won or lost, set closedAt

@@ -1,6 +1,7 @@
 import { prisma } from '../db/client.js';
 import type { Prisma } from '@prisma/client';
 import type { CreateContactInput, UpdateContactInput, ContactQuery } from '../shared/schemas/index.js';
+import { validateTeamMember, validateTeamCompany } from '../lib/validation.js';
 
 export class ContactService {
   async list(teamId: string, query: ContactQuery) {
@@ -69,6 +70,16 @@ export class ContactService {
   }
 
   async create(teamId: string, userId: string, input: CreateContactInput) {
+    // Validate ownerId belongs to team if specified
+    if (input.ownerId && input.ownerId !== userId) {
+      await validateTeamMember(teamId, input.ownerId);
+    }
+
+    // Validate companyId belongs to team if specified
+    if (input.companyId) {
+      await validateTeamCompany(teamId, input.companyId);
+    }
+
     return prisma.contact.create({
       data: {
         name: input.name,
@@ -95,6 +106,16 @@ export class ContactService {
 
     if (!contact) {
       return null;
+    }
+
+    // Validate ownerId belongs to team if being changed
+    if (input.ownerId) {
+      await validateTeamMember(teamId, input.ownerId);
+    }
+
+    // Validate companyId belongs to team if being changed
+    if (input.companyId) {
+      await validateTeamCompany(teamId, input.companyId);
     }
 
     return prisma.contact.update({

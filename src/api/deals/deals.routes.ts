@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../lib/auth.js';
 import { dealService } from '../../services/deal.service.js';
+import { ValidationError } from '../../lib/validation.js';
 import {
   createDealSchema,
   updateDealSchema,
@@ -72,12 +73,21 @@ export async function dealsRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
-      const deal = await dealService.create(
-        request.auth!.teamId,
-        request.auth!.userId,
-        parseResult.data
-      );
-      return reply.status(201).send({ data: deal });
+      try {
+        const deal = await dealService.create(
+          request.auth!.teamId,
+          request.auth!.userId,
+          parseResult.data
+        );
+        return reply.status(201).send({ data: deal });
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          return reply.status(400).send({
+            error: { code: error.code, message: error.message },
+          });
+        }
+        throw error;
+      }
     }
   );
 
@@ -99,19 +109,28 @@ export async function dealsRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
-      const deal = await dealService.update(
-        request.auth!.teamId,
-        request.params.id,
-        parseResult.data
-      );
+      try {
+        const deal = await dealService.update(
+          request.auth!.teamId,
+          request.params.id,
+          parseResult.data
+        );
 
-      if (!deal) {
-        return reply.status(404).send({
-          error: { code: 'NOT_FOUND', message: 'Deal not found' },
-        });
+        if (!deal) {
+          return reply.status(404).send({
+            error: { code: 'NOT_FOUND', message: 'Deal not found' },
+          });
+        }
+
+        return { data: deal };
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          return reply.status(400).send({
+            error: { code: error.code, message: error.message },
+          });
+        }
+        throw error;
       }
-
-      return { data: deal };
     }
   );
 

@@ -76,6 +76,7 @@ model Invite {
 
   @@index([token])
   @@index([teamId])
+  @@index([teamId, email]) // Composite for checking existing invites
   @@map("invites")
 }
 
@@ -165,6 +166,7 @@ model Deal {
   @@index([contactId])
   @@index([ownerId])
   @@index([stage])
+  @@index([teamId, stage]) // Composite for pipeline queries
   @@map("deals")
 }
 
@@ -202,6 +204,8 @@ model Activity {
   @@index([userId])
   @@index([dueAt])
   @@index([completedAt])
+  @@index([teamId, dueAt]) // Composite for upcoming activities
+  @@index([teamId, completedAt]) // Composite for overdue queries
   @@map("activities")
 }
 

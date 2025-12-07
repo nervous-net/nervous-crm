@@ -1,4 +1,5 @@
 import { prisma } from '../db/client.js';
+import { Prisma } from '@prisma/client';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 import {
   createAccessToken,
@@ -25,49 +26,50 @@ export interface AuthUser {
 
 export class AuthService {
   async register(input: RegisterInput): Promise<{ user: AuthUser; tokens: AuthTokens }> {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: input.email.toLowerCase() },
-    });
-
-    if (existingUser) {
-      throw new AuthError('EMAIL_EXISTS', 'A user with this email already exists');
-    }
-
     const passwordHash = await hashPassword(input.password);
 
-    const result = await prisma.$transaction(async (tx) => {
-      // Create team first
-      const team = await tx.team.create({
-        data: { name: input.teamName },
+    try {
+      // Use transaction and rely on DB unique constraint for atomicity
+      const result = await prisma.$transaction(async (tx) => {
+        // Create team first
+        const team = await tx.team.create({
+          data: { name: input.teamName },
+        });
+
+        // Create user as owner - unique constraint will prevent duplicates
+        const user = await tx.user.create({
+          data: {
+            email: input.email.toLowerCase(),
+            passwordHash,
+            name: input.name,
+            role: 'owner',
+            teamId: team.id,
+          },
+        });
+
+        return { user, team };
       });
 
-      // Create user as owner
-      const user = await tx.user.create({
-        data: {
-          email: input.email.toLowerCase(),
-          passwordHash,
-          name: input.name,
-          role: 'owner',
-          teamId: team.id,
+      const tokens = await this.createSession(result.user.id, result.user.teamId, result.user.role);
+
+      return {
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          role: result.user.role,
+          teamId: result.team.id,
+          teamName: result.team.name,
         },
-      });
-
-      return { user, team };
-    });
-
-    const tokens = await this.createSession(result.user.id, result.user.teamId, result.user.role);
-
-    return {
-      user: {
-        id: result.user.id,
-        email: result.user.email,
-        name: result.user.name,
-        role: result.user.role,
-        teamId: result.team.id,
-        teamName: result.team.name,
-      },
-      tokens,
-    };
+        tokens,
+      };
+    } catch (error) {
+      // Handle unique constraint violation
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AuthError('EMAIL_EXISTS', 'A user with this email already exists');
+      }
+      throw error;
+    }
   }
 
   async login(input: LoginInput): Promise<{ user: AuthUser; tokens: AuthTokens }> {
@@ -164,48 +166,49 @@ export class AuthService {
       throw new AuthError('INVITE_EXPIRED', 'This invite has expired');
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: invite.email.toLowerCase() },
-    });
-
-    if (existingUser) {
-      throw new AuthError('EMAIL_EXISTS', 'A user with this email already exists');
-    }
-
     const passwordHash = await hashPassword(input.password);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          email: invite.email.toLowerCase(),
-          passwordHash,
-          name: input.name,
-          role: invite.role,
+    try {
+      // Use transaction and rely on DB unique constraint for atomicity
+      const result = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            email: invite.email.toLowerCase(),
+            passwordHash,
+            name: input.name,
+            role: invite.role,
+            teamId: invite.teamId,
+          },
+        });
+
+        await tx.invite.update({
+          where: { id: invite.id },
+          data: { status: 'accepted' },
+        });
+
+        return user;
+      });
+
+      const tokens = await this.createSession(result.id, result.teamId, result.role);
+
+      return {
+        user: {
+          id: result.id,
+          email: result.email,
+          name: result.name,
+          role: result.role,
           teamId: invite.teamId,
+          teamName: invite.team.name,
         },
-      });
-
-      await tx.invite.update({
-        where: { id: invite.id },
-        data: { status: 'accepted' },
-      });
-
-      return user;
-    });
-
-    const tokens = await this.createSession(result.id, result.teamId, result.role);
-
-    return {
-      user: {
-        id: result.id,
-        email: result.email,
-        name: result.name,
-        role: result.role,
-        teamId: invite.teamId,
-        teamName: invite.team.name,
-      },
-      tokens,
-    };
+        tokens,
+      };
+    } catch (error) {
+      // Handle unique constraint violation
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AuthError('EMAIL_EXISTS', 'A user with this email already exists');
+      }
+      throw error;
+    }
   }
 
   private async createSession(userId: string, teamId: string, role: Role): Promise<AuthTokens> {
