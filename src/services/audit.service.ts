@@ -49,6 +49,31 @@ export class AuditService {
   }
 
   /**
+   * Logs security events (failed logins, etc.) that may not have team context.
+   * Uses a special 'system' teamId for events without team association.
+   */
+  async logSecurityEvent(
+    action: string,
+    metadata: Prisma.InputJsonValue,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    try {
+      await prisma.auditLog.create({
+        data: {
+          teamId: 'system', // Special ID for system-wide security events
+          action,
+          metadata,
+          ipAddress,
+          userAgent,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to log security event:', error);
+    }
+  }
+
+  /**
    * Query audit logs for a team
    */
   async query(teamId: string, query: AuditLogQuery = {}) {
@@ -120,7 +145,7 @@ export const auditService = new AuditService();
 
 // Common audit action constants
 export const AuditActions = {
-  // Auth
+  // Auth - Success
   USER_LOGIN: 'user.login',
   USER_LOGOUT: 'user.logout',
   USER_REGISTER: 'user.register',
@@ -128,6 +153,13 @@ export const AuditActions = {
   PASSWORD_RESET: 'user.password_reset',
   PASSWORD_CHANGE: 'user.password_change',
   EMAIL_VERIFIED: 'user.email_verified',
+
+  // Auth - Security Events (failures)
+  LOGIN_FAILED: 'security.login_failed',
+  INVALID_REFRESH_TOKEN: 'security.invalid_refresh_token',
+  INVALID_RESET_TOKEN: 'security.invalid_reset_token',
+  INVALID_INVITE_TOKEN: 'security.invalid_invite_token',
+  RATE_LIMIT_EXCEEDED: 'security.rate_limit_exceeded',
 
   // Team
   TEAM_UPDATE: 'team.update',

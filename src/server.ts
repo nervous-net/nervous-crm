@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from './lib/config.js';
+import { REQUEST_LIMITS } from './lib/constants.js';
 import { authRoutes } from './api/auth/index.js';
 import { usersRoutes } from './api/users/index.js';
 import { teamsRoutes } from './api/teams/index.js';
@@ -18,6 +19,7 @@ const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({
   logger: true,
+  bodyLimit: REQUEST_LIMITS.MAX_JSON_BODY_SIZE,
 });
 
 // Register plugins

@@ -140,6 +140,7 @@ model Company {
   contacts Contact[]
   deals    Deal[]
 
+  @@unique([teamId, name]) // Company names must be unique per team
   @@index([teamId])
   @@index([name])
   @@map("companies")
@@ -163,6 +164,7 @@ model Contact {
   deals      Deal[]
   activities Activity[]
 
+  @@unique([teamId, email]) // Contact emails must be unique per team (NULL allowed)
   @@index([teamId])
   @@index([companyId])
   @@index([ownerId])

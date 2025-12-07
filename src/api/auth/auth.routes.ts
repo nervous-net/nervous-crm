@@ -4,6 +4,7 @@ import { authService, AuthError } from '../../services/auth.service.js';
 import { config } from '../../lib/config.js';
 import { authMiddleware } from '../../lib/auth.js';
 import { auditService, AuditActions } from '../../services/audit.service.js';
+import { COOKIE_MAX_AGE, RATE_LIMIT } from '../../lib/constants.js';
 import {
   registerSchema,
   loginSchema,
@@ -30,8 +31,7 @@ const COOKIE_OPTIONS = {
 
 // Rate limit config for auth endpoints (stricter limits)
 const authRateLimitConfig = {
-  max: 5, // 5 attempts
-  timeWindow: '1 minute',
+  ...RATE_LIMIT.AUTH_ENDPOINTS,
   errorResponseBuilder: () => ({
     error: {
       code: 'RATE_LIMIT_EXCEEDED',
@@ -42,10 +42,7 @@ const authRateLimitConfig = {
 
 export async function authRoutes(fastify: FastifyInstance): Promise<void> {
   // Register rate limiting for this route group
-  await fastify.register(rateLimit, {
-    max: 100, // Default: 100 requests per minute for general auth endpoints
-    timeWindow: '1 minute',
-  });
+  await fastify.register(rateLimit, RATE_LIMIT.GENERAL);
   // POST /api/v1/auth/register
   fastify.post<{ Body: RegisterInput }>(
     '/register',
@@ -68,11 +65,11 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         reply
           .setCookie('access_token', tokens.accessToken, {
             ...COOKIE_OPTIONS,
-            maxAge: 15 * 60, // 15 minutes
+            maxAge: COOKIE_MAX_AGE.ACCESS_TOKEN,
           })
           .setCookie('refresh_token', tokens.refreshToken, {
             ...COOKIE_OPTIONS,
-            maxAge: 7 * 24 * 60 * 60, // 7 days
+            maxAge: COOKIE_MAX_AGE.REFRESH_TOKEN,
           });
 
         return { data: { user } };
@@ -130,6 +127,14 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         return { data: { user } };
       } catch (error) {
         if (error instanceof AuthError) {
+          // Log failed login attempt
+          auditService.logSecurityEvent(
+            AuditActions.LOGIN_FAILED,
+            { email: parseResult.data.email, reason: error.code },
+            request.ip,
+            request.headers['user-agent']
+          );
+
           return reply.status(401).send({
             error: { code: error.code, message: error.message },
           });

@@ -1,8 +1,6 @@
 import * as jose from 'jose';
 import { config } from './config.js';
-
-const ACCESS_TOKEN_EXPIRY = '15m';
-const REFRESH_TOKEN_EXPIRY = '7d';
+import { TOKEN_EXPIRY, TIME_MS } from './constants.js';
 
 interface TokenPayload {
   userId: string;
@@ -19,7 +17,7 @@ export async function createAccessToken(payload: TokenPayload): Promise<string> 
   return new jose.SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime(ACCESS_TOKEN_EXPIRY)
+    .setExpirationTime(TOKEN_EXPIRY.ACCESS_TOKEN)
     .sign(jwtSecretKey);
 }
 
@@ -27,7 +25,7 @@ export async function createRefreshToken(payload: { sessionId: string }): Promis
   return new jose.SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime(REFRESH_TOKEN_EXPIRY)
+    .setExpirationTime(TOKEN_EXPIRY.REFRESH_TOKEN)
     .sign(jwtRefreshSecretKey);
 }
 
@@ -42,5 +40,5 @@ export async function verifyRefreshToken(token: string): Promise<{ sessionId: st
 }
 
 export function getRefreshTokenExpiry(): Date {
-  return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  return new Date(Date.now() + TIME_MS.WEEK);
 }
