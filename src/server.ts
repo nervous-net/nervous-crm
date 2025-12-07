@@ -1,3 +1,7 @@
+// Initialize Sentry first, before any other imports
+import { initSentry, Sentry, captureError } from './lib/sentry.js';
+initSentry();
+
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
@@ -44,6 +48,29 @@ fastify.register(csrf, {
   },
 });
 
+// Global error handler - report to Sentry
+fastify.setErrorHandler((error, request, reply) => {
+  // Log to Sentry
+  captureError(error, {
+    url: request.url,
+    method: request.method,
+    userId: request.auth?.userId,
+    teamId: request.auth?.teamId,
+  });
+
+  // Log locally
+  fastify.log.error(error);
+
+  // Send appropriate response
+  const statusCode = error.statusCode || 500;
+  reply.status(statusCode).send({
+    error: {
+      code: error.code || 'INTERNAL_ERROR',
+      message: statusCode === 500 ? 'An unexpected error occurred' : error.message,
+    },
+  });
+});
+
 // Health check
 fastify.get('/health', async () => {
   return { status: 'ok' };
@@ -85,8 +112,21 @@ const start = async () => {
     await fastify.listen({ port: config.port, host: '0.0.0.0' });
   } catch (err) {
     fastify.log.error(err);
+    captureError(err as Error, { phase: 'startup' });
+    await Sentry.flush(2000);
     process.exit(1);
   }
 };
+
+// Graceful shutdown
+const shutdown = async (signal: string) => {
+  console.log(`Received ${signal}, shutting down gracefully...`);
+  await fastify.close();
+  await Sentry.flush(2000);
+  process.exit(0);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 start();

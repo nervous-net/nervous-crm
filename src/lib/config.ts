@@ -9,6 +9,7 @@ interface Config {
   jwtRefreshSecret: string;
   frontendUrl: string;
   databaseUrl: string;
+  sentryDsn: string | undefined;
 }
 
 function requireEnv(name: string): string {
@@ -35,6 +36,7 @@ function validateConfig(): Config {
       jwtRefreshSecret: requireEnv('JWT_REFRESH_SECRET'),
       frontendUrl: requireEnv('FRONTEND_URL'),
       databaseUrl: requireEnv('DATABASE_URL'),
+      sentryDsn: process.env.SENTRY_DSN, // Optional but recommended in production
     };
   }
 
@@ -47,6 +49,7 @@ function validateConfig(): Config {
     jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-not-for-production',
     frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
     databaseUrl: requireEnv('DATABASE_URL'), // Always required
+    sentryDsn: process.env.SENTRY_DSN, // Optional in development
   };
 }
 
