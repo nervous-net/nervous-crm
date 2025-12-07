@@ -1,6 +1,9 @@
 import { prisma } from '../db/client.js';
 import type { Prisma } from '@prisma/client';
 import type { CreateCompanyInput, UpdateCompanyInput, CompanyQuery } from '../shared/schemas/index.js';
+import { parseSort } from '../lib/query-helpers.js';
+
+const VALID_SORT_FIELDS = ['name', 'createdAt', 'updatedAt'];
 
 export class CompanyService {
   async list(teamId: string, query: CompanyQuery) {
@@ -17,7 +20,7 @@ export class CompanyService {
       ...(industry && { industry }),
     };
 
-    const orderBy = this.parseSort(sort);
+    const orderBy = parseSort(sort, VALID_SORT_FIELDS);
 
     const companies = await prisma.company.findMany({
       where,
@@ -94,16 +97,6 @@ export class CompanyService {
 
     await prisma.company.delete({ where: { id } });
     return true;
-  }
-
-  private parseSort(sort: string): Prisma.CompanyOrderByWithRelationInput {
-    const desc = sort.startsWith('-');
-    const field = desc ? sort.slice(1) : sort;
-
-    const validFields = ['name', 'createdAt', 'updatedAt'];
-    const orderField = validFields.includes(field) ? field : 'createdAt';
-
-    return { [orderField]: desc ? 'desc' : 'asc' };
   }
 }
 

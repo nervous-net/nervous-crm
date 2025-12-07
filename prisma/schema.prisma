@@ -28,20 +28,22 @@ model Team {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         Role     @default(member)
-  teamId       String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          Role      @default(member)
+  teamId        String
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  team             Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  sessions         Session[]
-  ownedContacts    Contact[]  @relation("ContactOwner")
-  ownedDeals       Deal[]     @relation("DealOwner")
-  createdActivities Activity[] @relation("ActivityCreator")
+  team               Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  sessions           Session[]
+  ownedContacts      Contact[]          @relation("ContactOwner")
+  ownedDeals         Deal[]             @relation("DealOwner")
+  createdActivities  Activity[]         @relation("ActivityCreator")
+  emailVerifications EmailVerification[]
 
   @@index([teamId])
   @@index([email])
@@ -78,6 +80,34 @@ model Invite {
   @@index([teamId])
   @@index([teamId, email]) // Composite for checking existing invites
   @@map("invites")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email])
+  @@map("password_resets")
+}
+
+model EmailVerification {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  verifiedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("email_verifications")
 }
 
 enum Role {
@@ -214,4 +244,28 @@ enum ActivityType {
   email
   meeting
   task
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  teamId     String
+  userId     String?  // Null for system actions
+  action     String   // e.g., "contact.create", "deal.update", "user.login"
+  entityType String?  // e.g., "contact", "deal", "user"
+  entityId   String?  // ID of the affected entity
+  metadata   Json?    // Additional context (old values, new values, etc.)
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([teamId])
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

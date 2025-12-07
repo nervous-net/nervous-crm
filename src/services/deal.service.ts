@@ -2,6 +2,10 @@ import { prisma } from '../db/client.js';
 import type { Prisma, DealStage } from '@prisma/client';
 import type { CreateDealInput, UpdateDealInput, DealQuery } from '../shared/schemas/index.js';
 import { validateTeamMember, validateTeamCompany, validateTeamContact } from '../lib/validation.js';
+import { parseSort, parseIncludes } from '../lib/query-helpers.js';
+
+const VALID_SORT_FIELDS = ['title', 'value', 'stage', 'createdAt', 'updatedAt'];
+const VALID_INCLUDES = ['company', 'contact', 'activities'];
 
 export class DealService {
   async list(teamId: string, query: DealQuery) {
@@ -18,8 +22,8 @@ export class DealService {
       ...(ownerId && { ownerId }),
     };
 
-    const orderBy = this.parseSort(sort);
-    const includes = this.parseIncludes(include);
+    const orderBy = parseSort(sort, VALID_SORT_FIELDS);
+    const includes = parseIncludes(include, VALID_INCLUDES);
 
     const deals = await prisma.deal.findMany({
       where,
@@ -94,7 +98,7 @@ export class DealService {
   }
 
   async getById(teamId: string, id: string, include?: string) {
-    const includes = this.parseIncludes(include);
+    const includes = parseIncludes(include, VALID_INCLUDES);
 
     return prisma.deal.findFirst({
       where: { id, teamId },
@@ -207,32 +211,6 @@ export class DealService {
 
     await prisma.deal.delete({ where: { id } });
     return true;
-  }
-
-  private parseSort(sort: string): Prisma.DealOrderByWithRelationInput {
-    const desc = sort.startsWith('-');
-    const field = desc ? sort.slice(1) : sort;
-
-    const validFields = ['title', 'value', 'stage', 'createdAt', 'updatedAt'];
-    const orderField = validFields.includes(field) ? field : 'createdAt';
-
-    return { [orderField]: desc ? 'desc' : 'asc' };
-  }
-
-  private parseIncludes(include?: string): Record<string, boolean> {
-    if (!include) return {};
-
-    const includes: Record<string, boolean> = {};
-    const valid = ['company', 'contact', 'activities'];
-
-    include.split(',').forEach((inc) => {
-      const trimmed = inc.trim();
-      if (valid.includes(trimmed)) {
-        includes[trimmed] = true;
-      }
-    });
-
-    return includes;
   }
 }
 

@@ -1,6 +1,10 @@
 import { prisma } from '../db/client.js';
 import type { Prisma, ActivityType } from '@prisma/client';
 import type { CreateActivityInput, UpdateActivityInput, ActivityQuery } from '../shared/schemas/index.js';
+import { parseSort, parseIncludes } from '../lib/query-helpers.js';
+
+const VALID_SORT_FIELDS = ['title', 'type', 'dueAt', 'createdAt', 'completedAt'];
+const VALID_INCLUDES = ['deal', 'contact'];
 
 export class ActivityService {
   async list(teamId: string, query: ActivityQuery) {
@@ -30,8 +34,8 @@ export class ActivityService {
       ...(dueAfter && { dueAt: { gte: dueAfter } }),
     };
 
-    const orderBy = this.parseSort(sort);
-    const includes = this.parseIncludes(include);
+    const orderBy = parseSort(sort, VALID_SORT_FIELDS, 'dueAt');
+    const includes = parseIncludes(include, VALID_INCLUDES);
 
     const activities = await prisma.activity.findMany({
       where,
@@ -64,7 +68,7 @@ export class ActivityService {
   }
 
   async getById(teamId: string, id: string, include?: string) {
-    const includes = this.parseIncludes(include);
+    const includes = parseIncludes(include, VALID_INCLUDES);
 
     return prisma.activity.findFirst({
       where: { id, teamId },
@@ -199,32 +203,6 @@ export class ActivityService {
         user: { select: { id: true, name: true } },
       },
     });
-  }
-
-  private parseSort(sort: string): Prisma.ActivityOrderByWithRelationInput {
-    const desc = sort.startsWith('-');
-    const field = desc ? sort.slice(1) : sort;
-
-    const validFields = ['title', 'type', 'dueAt', 'createdAt', 'completedAt'];
-    const orderField = validFields.includes(field) ? field : 'dueAt';
-
-    return { [orderField]: desc ? 'desc' : 'asc' };
-  }
-
-  private parseIncludes(include?: string): Record<string, boolean | object> {
-    if (!include) return {};
-
-    const includes: Record<string, boolean | object> = {};
-    const valid = ['deal', 'contact'];
-
-    include.split(',').forEach((inc) => {
-      const trimmed = inc.trim();
-      if (valid.includes(trimmed)) {
-        includes[trimmed] = true;
-      }
-    });
-
-    return includes;
   }
 }
 

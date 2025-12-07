@@ -2,6 +2,10 @@ import { prisma } from '../db/client.js';
 import type { Prisma } from '@prisma/client';
 import type { CreateContactInput, UpdateContactInput, ContactQuery } from '../shared/schemas/index.js';
 import { validateTeamMember, validateTeamCompany } from '../lib/validation.js';
+import { parseSort, parseIncludes } from '../lib/query-helpers.js';
+
+const VALID_SORT_FIELDS = ['name', 'email', 'createdAt', 'updatedAt'];
+const VALID_INCLUDES = ['company', 'activities', 'deals'];
 
 export class ContactService {
   async list(teamId: string, query: ContactQuery) {
@@ -19,8 +23,8 @@ export class ContactService {
       ...(ownerId && { ownerId }),
     };
 
-    const orderBy = this.parseSort(sort);
-    const includes = this.parseIncludes(include);
+    const orderBy = parseSort(sort, VALID_SORT_FIELDS);
+    const includes = parseIncludes(include, VALID_INCLUDES);
 
     const contacts = await prisma.contact.findMany({
       where,
@@ -53,7 +57,7 @@ export class ContactService {
   }
 
   async getById(teamId: string, id: string, include?: string) {
-    const includes = this.parseIncludes(include);
+    const includes = parseIncludes(include, VALID_INCLUDES);
 
     return prisma.contact.findFirst({
       where: { id, teamId },
@@ -141,32 +145,6 @@ export class ContactService {
 
     await prisma.contact.delete({ where: { id } });
     return true;
-  }
-
-  private parseSort(sort: string): Prisma.ContactOrderByWithRelationInput {
-    const desc = sort.startsWith('-');
-    const field = desc ? sort.slice(1) : sort;
-
-    const validFields = ['name', 'email', 'createdAt', 'updatedAt'];
-    const orderField = validFields.includes(field) ? field : 'createdAt';
-
-    return { [orderField]: desc ? 'desc' : 'asc' };
-  }
-
-  private parseIncludes(include?: string): Record<string, boolean> {
-    if (!include) return {};
-
-    const includes: Record<string, boolean> = {};
-    const valid = ['company', 'activities', 'deals'];
-
-    include.split(',').forEach((inc) => {
-      const trimmed = inc.trim();
-      if (valid.includes(trimmed)) {
-        includes[trimmed] = true;
-      }
-    });
-
-    return includes;
   }
 }
 
