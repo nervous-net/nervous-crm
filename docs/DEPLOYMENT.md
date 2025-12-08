@@ -1,5 +1,13 @@
 # Deployment Checklist
 
+## CRITICAL: Production Database
+
+**NEVER flush, reset, or drop the production database.** Real user data is stored there.
+
+- Use `prisma migrate deploy` for schema changes (not `prisma db push`)
+- Always back up before running migrations
+- Test migrations on local/staging first
+
 ## Pre-deployment
 
 - [ ] All tests passing: `npm run test:run`
