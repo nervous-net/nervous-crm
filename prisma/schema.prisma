@@ -155,7 +155,7 @@ model Contact {
   phone     String?
   title     String?
   companyId String?
-  ownerId   String
+  ownerId   String?
   teamId    String
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -163,7 +163,7 @@ model Contact {
 
   team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
   company    Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  owner      User       @relation("ContactOwner", fields: [ownerId], references: [id])
+  owner      User?      @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   deals      Deal[]
   activities Activity[]
 
@@ -185,7 +185,7 @@ model Deal {
   probability Int?      @default(0)
   companyId   String?
   contactId   String?
-  ownerId     String
+  ownerId     String?
   teamId      String
   closedAt    DateTime?
   deletedAt   DateTime?
@@ -195,7 +195,7 @@ model Deal {
   team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
   company    Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
   contact    Contact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  owner      User       @relation("DealOwner", fields: [ownerId], references: [id])
+  owner      User?      @relation("DealOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   activities Activity[]
 
   @@index([teamId])
@@ -226,7 +226,7 @@ model Activity {
   completedAt DateTime?
   dealId      String?
   contactId   String?
-  userId      String
+  userId      String?
   teamId      String
   deletedAt   DateTime?
   createdAt   DateTime      @default(now())
@@ -235,7 +235,7 @@ model Activity {
   team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
   contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  user    User     @relation("ActivityCreator", fields: [userId], references: [id])
+  user    User?    @relation("ActivityCreator", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([teamId])
   @@index([dealId])
@@ -262,7 +262,7 @@ enum ActivityType {
 
 model AuditLog {
   id         String   @id @default(cuid())
-  teamId     String
+  teamId     String?  // Null for system-wide security events
   userId     String?  // Null for system actions
   action     String   // e.g., "contact.create", "deal.update", "user.login"
   entityType String?  // e.g., "contact", "deal", "user"

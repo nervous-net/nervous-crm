@@ -113,13 +113,13 @@ export class ContactService {
       return null;
     }
 
-    // Validate ownerId belongs to team if being changed
-    if (input.ownerId) {
+    // Validate ownerId belongs to team if being changed (check !== undefined to catch empty strings)
+    if (input.ownerId !== undefined && input.ownerId !== null && input.ownerId !== '') {
       await validateTeamMember(teamId, input.ownerId);
     }
 
     // Validate companyId belongs to team if being changed
-    if (input.companyId) {
+    if (input.companyId !== undefined && input.companyId !== null && input.companyId !== '') {
       await validateTeamCompany(teamId, input.companyId);
     }
 

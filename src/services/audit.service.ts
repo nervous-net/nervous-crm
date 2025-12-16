@@ -2,7 +2,7 @@ import { prisma } from '../db/client.js';
 import type { Prisma } from '@prisma/client';
 
 export interface AuditLogEntry {
-  teamId: string;
+  teamId?: string;  // Null for system-wide security events
   userId?: string;
   action: string;
   entityType?: string;
@@ -50,7 +50,7 @@ export class AuditService {
 
   /**
    * Logs security events (failed logins, etc.) that may not have team context.
-   * Uses a special 'system' teamId for events without team association.
+   * Uses null teamId for events without team association.
    */
   async logSecurityEvent(
     action: string,
@@ -61,7 +61,7 @@ export class AuditService {
     try {
       await prisma.auditLog.create({
         data: {
-          teamId: 'system', // Special ID for system-wide security events
+          teamId: null, // System-wide security events have no team
           action,
           metadata,
           ipAddress,
