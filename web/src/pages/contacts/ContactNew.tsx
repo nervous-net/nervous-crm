@@ -12,12 +12,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
 
+const emptyToUndefined = (val: unknown) => (val === '' ? undefined : val);
+
 const contactSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().max(50).optional().or(z.literal('')),
-  title: z.string().max(100).optional().or(z.literal('')),
-  companyId: z.string().optional().or(z.literal('')),
+  email: z.preprocess(emptyToUndefined, z.string().email('Invalid email').optional()),
+  phone: z.preprocess(emptyToUndefined, z.string().max(50).optional()),
+  title: z.preprocess(emptyToUndefined, z.string().max(100).optional()),
+  companyId: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 type ContactForm = z.infer<typeof contactSchema>;
@@ -53,16 +55,7 @@ export default function ContactNew() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: ContactForm) => {
-      const payload = {
-        ...data,
-        email: data.email || undefined,
-        phone: data.phone || undefined,
-        title: data.title || undefined,
-        companyId: data.companyId || undefined,
-      };
-      return api.post('/contacts', payload);
-    },
+    mutationFn: (data: ContactForm) => api.post('/contacts', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast({ title: 'Contact created successfully' });
