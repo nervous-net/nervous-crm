@@ -30,3 +30,6 @@ coverage/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+
+# Local Netlify folder
+.netlify
