@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../db/client.js';
 import { authMiddleware } from '../../lib/auth.js';
 import { updateProfileSchema, type UpdateProfileInput } from '../../shared/schemas/index.js';
+import { auditService, AuditActions } from '../../services/audit.service.js';
 
 export async function usersRoutes(fastify: FastifyInstance): Promise<void> {
   // All routes require authentication
@@ -82,6 +83,21 @@ export async function usersRoutes(fastify: FastifyInstance): Promise<void> {
           role: true,
           teamId: true,
         },
+      });
+
+      // Audit log profile update
+      auditService.log({
+        teamId: request.auth!.teamId,
+        userId: request.auth!.userId,
+        action: AuditActions.PROFILE_UPDATE,
+        entityType: 'user',
+        entityId: request.auth!.userId,
+        metadata: {
+          emailChanged: !!email,
+          nameChanged: !!name,
+        },
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
       });
 
       return { data: user };

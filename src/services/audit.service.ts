@@ -152,6 +152,7 @@ export const AuditActions = {
   PASSWORD_RESET_REQUEST: 'user.password_reset_request',
   PASSWORD_RESET: 'user.password_reset',
   PASSWORD_CHANGE: 'user.password_change',
+  PROFILE_UPDATE: 'user.profile_update',
   EMAIL_VERIFIED: 'user.email_verified',
 
   // Auth - Security Events (failures)
