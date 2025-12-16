@@ -65,6 +65,10 @@ export const RATE_LIMIT = {
     max: 5,
     timeWindow: '1 minute',
   },
+  CSRF_ENDPOINT: {
+    max: 30,
+    timeWindow: '1 minute',
+  },
   GENERAL: {
     max: 100,
     timeWindow: '1 minute',

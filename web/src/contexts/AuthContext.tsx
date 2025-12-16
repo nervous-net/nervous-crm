@@ -13,6 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  authError: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; password: string; name: string; teamName: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -24,13 +25,21 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const refreshUser = useCallback(async () => {
     try {
+      setAuthError(null);
       const response = await api.get<{ data: User }>('/users/me');
       setUser(response.data);
-    } catch {
-      setUser(null);
+    } catch (error) {
+      // Only clear user on 401 (unauthorized), not on network errors
+      if (error instanceof Error && error.message === 'Authentication required') {
+        setUser(null);
+      } else {
+        // Network or other error - keep user state but show error
+        setAuthError('Unable to connect to server');
+      }
     }
   }, []);
 
@@ -54,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, authError, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

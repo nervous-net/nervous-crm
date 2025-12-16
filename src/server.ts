@@ -9,8 +9,10 @@ import csrf from '@fastify/csrf-protection';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import rateLimit from '@fastify/rate-limit';
 import { config } from './lib/config.js';
-import { REQUEST_LIMITS } from './lib/constants.js';
+import { REQUEST_LIMITS, RATE_LIMIT } from './lib/constants.js';
+import { prisma } from './db/client.js';
 import { authRoutes } from './api/auth/index.js';
 import { usersRoutes } from './api/users/index.js';
 import { teamsRoutes } from './api/teams/index.js';
@@ -48,6 +50,12 @@ fastify.register(csrf, {
   },
 });
 
+// Rate limiting
+fastify.register(rateLimit, {
+  max: RATE_LIMIT.GENERAL.max,
+  timeWindow: RATE_LIMIT.GENERAL.timeWindow,
+});
+
 // Global error handler - report to Sentry
 fastify.setErrorHandler((error, request, reply) => {
   // Log to Sentry
@@ -71,15 +79,26 @@ fastify.setErrorHandler((error, request, reply) => {
   });
 });
 
-// Health check
+// Health check with database connectivity verification
 fastify.get('/health', async () => {
-  return { status: 'ok' };
+  try {
+    // Verify database connection with a simple query
+    await prisma.$queryRaw`SELECT 1`;
+    return { status: 'ok', database: 'connected' };
+  } catch {
+    return { status: 'degraded', database: 'disconnected' };
+  }
 });
 
 // CSRF token endpoint - frontend calls this to get a token
-fastify.get('/api/v1/csrf-token', async (_request, reply) => {
-  const token = await reply.generateCsrf();
-  return { data: { csrfToken: token } };
+fastify.get('/api/v1/csrf-token', {
+  config: {
+    rateLimit: RATE_LIMIT.CSRF_ENDPOINT,
+  },
+  handler: async (_request, reply) => {
+    const token = await reply.generateCsrf();
+    return { data: { csrfToken: token } };
+  },
 });
 
 // API routes
