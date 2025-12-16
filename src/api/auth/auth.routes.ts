@@ -25,7 +25,7 @@ import {
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: config.nodeEnv === 'production',
-  sameSite: 'lax' as const,
+  sameSite: (config.nodeEnv === 'production' ? 'none' : 'lax') as 'none' | 'lax',
   path: '/',
 };
 
