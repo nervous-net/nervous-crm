@@ -117,11 +117,11 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         reply
           .setCookie('access_token', tokens.accessToken, {
             ...COOKIE_OPTIONS,
-            maxAge: 15 * 60,
+            maxAge: COOKIE_MAX_AGE.ACCESS_TOKEN,
           })
           .setCookie('refresh_token', tokens.refreshToken, {
             ...COOKIE_OPTIONS,
-            maxAge: 7 * 24 * 60 * 60,
+            maxAge: COOKIE_MAX_AGE.REFRESH_TOKEN,
           });
 
         return { data: { user } };
@@ -173,11 +173,11 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       reply
         .setCookie('access_token', tokens.accessToken, {
           ...COOKIE_OPTIONS,
-          maxAge: 15 * 60,
+          maxAge: COOKIE_MAX_AGE.ACCESS_TOKEN,
         })
         .setCookie('refresh_token', tokens.refreshToken, {
           ...COOKIE_OPTIONS,
-          maxAge: 7 * 24 * 60 * 60,
+          maxAge: COOKIE_MAX_AGE.REFRESH_TOKEN,
         });
 
       return { data: { message: 'Tokens refreshed successfully' } };
@@ -217,11 +217,11 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         reply
           .setCookie('access_token', tokens.accessToken, {
             ...COOKIE_OPTIONS,
-            maxAge: 15 * 60,
+            maxAge: COOKIE_MAX_AGE.ACCESS_TOKEN,
           })
           .setCookie('refresh_token', tokens.refreshToken, {
             ...COOKIE_OPTIONS,
-            maxAge: 7 * 24 * 60 * 60,
+            maxAge: COOKIE_MAX_AGE.REFRESH_TOKEN,
           });
 
         return { data: { user } };

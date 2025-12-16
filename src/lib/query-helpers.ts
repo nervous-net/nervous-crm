@@ -14,10 +14,12 @@ export interface SortResult {
  * @param defaultField - Default field to sort by if invalid or not provided
  */
 export function parseSort(
-  sort: string,
+  sort: string | undefined,
   validFields: string[],
   defaultField: string = 'createdAt'
 ): SortResult {
+  if (!sort) return { [defaultField]: 'desc' };
+
   const desc = sort.startsWith('-');
   const field = desc ? sort.slice(1) : sort;
 

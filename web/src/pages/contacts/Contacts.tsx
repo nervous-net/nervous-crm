@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useDeferredValue } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -32,10 +32,11 @@ interface ContactsResponse {
 
 export default function Contacts() {
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['contacts', search],
-    queryFn: () => api.get<ContactsResponse>(`/contacts?search=${search}&limit=50`),
+    queryKey: ['contacts', deferredSearch],
+    queryFn: () => api.get<ContactsResponse>(`/contacts?search=${deferredSearch}&limit=50`),
   });
 
   return (

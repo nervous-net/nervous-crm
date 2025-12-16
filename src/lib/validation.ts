@@ -52,3 +52,17 @@ export async function validateTeamContact(teamId: string, contactId: string): Pr
     throw new ValidationError('INVALID_CONTACT', 'The specified contact does not belong to this team');
   }
 }
+
+/**
+ * Validates that a deal belongs to the specified team.
+ */
+export async function validateTeamDeal(teamId: string, dealId: string): Promise<void> {
+  const deal = await prisma.deal.findFirst({
+    where: { id: dealId, teamId, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!deal) {
+    throw new ValidationError('INVALID_DEAL', 'The specified deal does not belong to this team');
+  }
+}

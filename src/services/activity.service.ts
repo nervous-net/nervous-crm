@@ -2,6 +2,7 @@ import { prisma } from '../db/client.js';
 import type { Prisma, ActivityType } from '@prisma/client';
 import type { CreateActivityInput, UpdateActivityInput, ActivityQuery } from '../shared/schemas/index.js';
 import { parseSort, parseIncludes } from '../lib/query-helpers.js';
+import { validateTeamDeal, validateTeamContact } from '../lib/validation.js';
 
 const VALID_SORT_FIELDS = ['title', 'type', 'dueAt', 'createdAt', 'completedAt'];
 const VALID_INCLUDES = ['deal', 'contact'];
@@ -83,6 +84,16 @@ export class ActivityService {
   }
 
   async create(teamId: string, userId: string, input: CreateActivityInput) {
+    // Validate dealId belongs to team if specified
+    if (input.dealId) {
+      await validateTeamDeal(teamId, input.dealId);
+    }
+
+    // Validate contactId belongs to team if specified
+    if (input.contactId) {
+      await validateTeamContact(teamId, input.contactId);
+    }
+
     return prisma.activity.create({
       data: {
         type: input.type as ActivityType,
@@ -109,6 +120,16 @@ export class ActivityService {
 
     if (!activity) {
       return null;
+    }
+
+    // Validate dealId belongs to team if being changed
+    if (input.dealId) {
+      await validateTeamDeal(teamId, input.dealId);
+    }
+
+    // Validate contactId belongs to team if being changed
+    if (input.contactId) {
+      await validateTeamContact(teamId, input.contactId);
     }
 
     return prisma.activity.update({
