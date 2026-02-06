@@ -1,11 +1,10 @@
 // ABOUTME: Deals pipeline page with kanban board layout
-// ABOUTME: Displays deals organized by stage with total values
+// ABOUTME: Displays deals organized by stage with hero-style card aesthetics
 
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDealsPipeline } from '@/lib/db';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { Plus, DollarSign } from 'lucide-react';
@@ -20,12 +19,21 @@ const stageLabels: Record<string, string> = {
 };
 
 const stageColors: Record<string, string> = {
-  lead: 'bg-slate-100',
-  qualified: 'bg-blue-100',
-  proposal: 'bg-purple-100',
-  negotiation: 'bg-orange-100',
-  won: 'bg-green-100',
-  lost: 'bg-red-100',
+  lead: 'bg-muted/60',
+  qualified: 'bg-primary/5',
+  proposal: 'bg-purple-50',
+  negotiation: 'bg-orange-50',
+  won: 'bg-green-50',
+  lost: 'bg-red-50',
+};
+
+const dealIconColors: Record<string, string> = {
+  lead: 'bg-muted text-muted-foreground',
+  qualified: 'bg-primary/10 text-primary',
+  proposal: 'bg-purple-100 text-purple-800',
+  negotiation: 'bg-orange-100 text-orange-800',
+  won: 'bg-green-100 text-green-800',
+  lost: 'bg-red-100 text-red-800',
 };
 
 export default function Deals() {
@@ -38,12 +46,12 @@ export default function Deals() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-bold">Deals Pipeline</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold">Deals Pipeline</h1>
         </div>
         <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-4 overflow-x-auto pb-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="flex-shrink-0 w-[85vw] sm:w-72">
-              <div className="h-96 bg-muted animate-pulse rounded" />
+              <div className="h-96 bg-muted animate-pulse rounded-xl" />
             </div>
           ))}
         </div>
@@ -59,12 +67,12 @@ export default function Deals() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Deals Pipeline</h1>
-          <p className="text-muted-foreground">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold">Deals Pipeline</h1>
+          <p className="text-sm text-muted-foreground">
             {formatCurrency(activeStages.reduce((sum, s) => sum + s.totalValue, 0))} in pipeline
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="rounded-full">
           <Link to="/deals/new">
             <Plus className="h-4 w-4 mr-2" />
             Add Deal
@@ -75,47 +83,51 @@ export default function Deals() {
       <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-4 overflow-x-auto pb-4">
         {[...activeStages, ...closedStages].map((stage) => (
           <div key={stage.stage} className="flex-shrink-0 w-[85vw] sm:w-72">
-            <Card className={stageColors[stage.stage]}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">
-                    {stageLabels[stage.stage]}
-                  </CardTitle>
-                  <Badge variant="secondary">{stage.count}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(stage.totalValue)}
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-2 max-h-[60vh] overflow-y-auto">
+            <div className={`rounded-xl border border-border/40 ${stageColors[stage.stage]} p-4`}>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-display font-bold text-sm">
+                  {stageLabels[stage.stage]}
+                </h3>
+                <Badge variant="secondary" className="rounded-full text-xs">
+                  {stage.count}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                {formatCurrency(stage.totalValue)}
+              </p>
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                 {stage.deals.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No deals
                   </p>
                 ) : (
                   stage.deals.map((deal) => (
-                    <Link key={deal.id} to={`/deals/${deal.id}`}>
-                      <Card className="bg-background hover:border-primary transition-colors cursor-pointer">
-                        <CardContent className="p-3">
-                          <p className="font-medium text-sm truncate">{deal.name}</p>
-                          {deal.value && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                              <DollarSign className="h-3 w-3" />
-                              {formatCurrency(Number(deal.value))}
-                            </div>
-                          )}
-                          {deal.company && (
-                            <p className="text-xs text-muted-foreground mt-1 truncate">
-                              {deal.company.name}
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
+                    <Link
+                      key={deal.id}
+                      to={`/deals/${deal.id}`}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-primary/40 transition-colors cursor-pointer"
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${dealIconColors[stage.stage]}`}>
+                        <DollarSign className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{deal.name}</p>
+                        {deal.company && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {deal.company.name}
+                          </p>
+                        )}
+                      </div>
+                      {deal.value && (
+                        <span className="text-xs font-semibold text-foreground flex-shrink-0">
+                          {formatCurrency(Number(deal.value))}
+                        </span>
+                      )}
                     </Link>
                   ))
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         ))}
       </div>

@@ -1,5 +1,5 @@
 // ABOUTME: Contacts list page with search functionality
-// ABOUTME: Displays all contacts with company associations
+// ABOUTME: Displays all contacts in a row-based list with initials avatars
 
 import { useState, useDeferredValue } from 'react';
 import { Link } from 'react-router-dom';
@@ -7,10 +7,33 @@ import { useQuery } from '@tanstack/react-query';
 import { getContacts } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
-import { Plus, Search, Mail, Phone } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
+
+const avatarColors = [
+  'bg-primary/10 text-primary',
+  'bg-accent/20 text-accent-foreground',
+  'bg-orange-100 text-orange-800',
+  'bg-purple-100 text-purple-800',
+  'bg-green-100 text-green-800',
+];
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+}
 
 export default function Contacts() {
   const [search, setSearch] = useState('');
@@ -25,12 +48,12 @@ export default function Contacts() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Contacts</h1>
-          <p className="text-muted-foreground">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold">Contacts</h1>
+          <p className="text-sm text-muted-foreground">
             {contacts?.length || 0} contacts
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="rounded-full">
           <Link to="/contacts/new">
             <Plus className="h-4 w-4 mr-2" />
             Add Contact
@@ -51,57 +74,44 @@ export default function Contacts() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-3">
           {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="h-24 bg-muted animate-pulse rounded" />
-              </CardContent>
-            </Card>
+            <div key={i} className="p-3 rounded-xl bg-card/60 border border-border/40">
+              <div className="h-12 bg-muted animate-pulse rounded-lg" />
+            </div>
           ))}
         </div>
       ) : !contacts?.length ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <p className="text-muted-foreground">
-              {search ? 'No contacts found' : 'No contacts yet. Add your first contact!'}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="p-12 rounded-xl bg-card/60 border border-border/40 text-center">
+          <p className="text-muted-foreground">
+            {search ? 'No contacts found' : 'No contacts yet. Add your first contact!'}
+          </p>
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-3">
           {contacts.map((contact) => (
-            <Link key={contact.id} to={`/contacts/${contact.id}`}>
-              <Card className="hover:border-primary transition-colors">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{contact.name}</CardTitle>
-                  {contact.title && (
-                    <p className="text-sm text-muted-foreground">{contact.title}</p>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {contact.company && (
-                    <Badge variant="secondary">{contact.company.name}</Badge>
-                  )}
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    {contact.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-3 w-3" />
-                        {contact.email}
-                      </div>
-                    )}
-                    {contact.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-3 w-3" />
-                        {contact.phone}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground pt-2">
-                    Added {formatDate(contact.created_at)}
-                  </p>
-                </CardContent>
-              </Card>
+            <Link
+              key={contact.id}
+              to={`/contacts/${contact.id}`}
+              className="flex items-center gap-4 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-primary/40 transition-colors"
+            >
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${getAvatarColor(contact.name)}`}>
+                {getInitials(contact.name)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{contact.name}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {[contact.title, contact.company?.name].filter(Boolean).join(' · ') || 'No title'}
+                </p>
+              </div>
+              {contact.company && (
+                <span className="hidden sm:inline-flex px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium flex-shrink-0">
+                  {contact.company.name}
+                </span>
+              )}
+              <span className="text-xs text-muted-foreground flex-shrink-0 hidden sm:block">
+                Added {formatDate(contact.created_at)}
+              </span>
             </Link>
           ))}
         </div>
