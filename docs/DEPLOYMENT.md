@@ -1,69 +1,88 @@
-# Deployment Checklist
+# Deployment Guide — Dossier (Nervous CRM)
+
+## Architecture
+
+- **Frontend**: React SPA hosted on Netlify (site name: `dossier`)
+- **Backend**: Supabase (auth, database, RLS policies)
+- **Error Tracking**: Sentry (React frontend)
+- **Transactional Email**: Resend (for passwordless auth OTP)
 
 ## CRITICAL: Production Database
 
 **NEVER flush, reset, or drop the production database.** Real user data is stored there.
 
-- Use `prisma migrate deploy` for schema changes (not `prisma db push`)
+- Use Supabase migrations for schema changes
 - Always back up before running migrations
 - Test migrations on local/staging first
 
 ## Pre-deployment
 
-- [ ] All tests passing: `npm run test:run`
-- [ ] TypeScript compiles: `npm run typecheck`
-- [ ] No linting errors: `npm run lint`
-- [ ] Build succeeds: `npm run build && npm run build -w web`
+- [ ] All tests passing: `cd web && npm test`
+- [ ] TypeScript compiles: `cd web && npm run typecheck`
+- [ ] Build succeeds: `cd web && npm run build`
 
 ## Environment Variables
 
-Set these secrets in Fly.io:
+### Netlify Build Environment
 
-- `DATABASE_URL` - Automatically set by Fly Postgres
-- `JWT_SECRET` - Run `openssl rand -hex 32`
-- `JWT_REFRESH_SECRET` - Run `openssl rand -hex 32`
-- `COOKIE_SECRET` - Run `openssl rand -hex 32`
-- `FRONTEND_URL` - Your production URL (e.g., https://nervous-crm.fly.dev)
+Set these in the Netlify dashboard under **Site settings → Environment variables**:
 
-## Deploy Commands
+| Variable | Description | How to get it |
+|----------|-------------|---------------|
+| `VITE_SUPABASE_URL` | Supabase project URL | Supabase dashboard → Settings → API |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key | Supabase dashboard → Settings → API |
+| `VITE_SENTRY_DSN` | Sentry DSN for error tracking | Sentry → Project Settings → Client Keys |
+
+All `VITE_` variables must be present at **build time** — they get baked into the frontend bundle.
+
+### Supabase Configuration
+
+Configured in the Supabase dashboard:
+
+| Setting | Location |
+|---------|----------|
+| Auth providers (email OTP) | Authentication → Providers |
+| Custom SMTP (Resend) | Project Settings → Auth → SMTP Settings |
+| Database (Postgres + RLS) | Database → Tables |
+| API keys | Settings → API |
+
+## Deploy
+
+Netlify auto-deploys from the `main` branch. Manual deploy:
 
 ```bash
-# Login to Fly
-fly auth login
-
-# Create app
-fly apps create nervous-crm
-
-# Create Postgres database
-fly postgres create --name nervous-crm-db
-
-# Attach database to app
-fly postgres attach nervous-crm-db
-
-# Set secrets
-fly secrets set JWT_SECRET=$(openssl rand -hex 32)
-fly secrets set JWT_REFRESH_SECRET=$(openssl rand -hex 32)
-fly secrets set COOKIE_SECRET=$(openssl rand -hex 32)
-
-# Deploy
-fly deploy
-
-# Run migrations
-fly ssh console -C "npx prisma migrate deploy"
-
-# View logs
-fly logs
-
-# SSH into machine
-fly ssh console
-
-# Scale
-fly scale count 2
+cd web && npm run build
+# Push to main — Netlify picks it up automatically
 ```
+
+Or via Netlify CLI:
+
+```bash
+npx netlify-cli deploy --prod --dir=web/dist
+```
+
+## Netlify Configuration
+
+`netlify.toml` handles build settings:
+
+```toml
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+```
+
+The SPA redirect ensures client-side routing works for all paths.
 
 ## Post-deployment
 
-- [ ] Verify health endpoint: `curl https://nervous-crm.fly.dev/health`
-- [ ] Test registration flow
-- [ ] Test login flow
-- [ ] Verify all pages load
+- [ ] Verify the site loads at `https://dossier.netlify.app` (or custom domain)
+- [ ] Test magic link / OTP login flow
+- [ ] Verify Sentry is receiving events (trigger a test error)
+- [ ] Check Supabase auth logs for successful logins
+- [ ] Verify RLS policies are enforced (try accessing another team's data)
