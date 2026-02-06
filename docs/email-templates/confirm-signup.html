@@ -1,0 +1,145 @@
+<!--
+ABOUTME: Supabase "Confirm Signup" email template with Dossier branding.
+ABOUTME: Paste into Supabase dashboard → Authentication → Email Templates → Confirm signup.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Confirm your Dossier account</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #FAF7F2; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased;">
+
+  <!-- Outer wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #FAF7F2;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+
+        <!-- Inner card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(26, 35, 50, 0.08);">
+
+          <!-- Yellow tab bar -->
+          <tr>
+            <td style="background-color: #FFD600; height: 6px; font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding: 32px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <!-- Folder icon (simple CSS version for email compat) -->
+                  <td style="width: 28px; height: 24px; background-color: #FFD600; border: 2px solid #1976D2; border-radius: 2px 6px 4px 4px; margin-right: 8px;" width="28" height="24">&nbsp;</td>
+                  <td style="padding-left: 10px; font-family: 'Archivo', Arial, sans-serif; font-weight: 800; font-size: 22px; color: #1A2332; letter-spacing: -0.5px;">dossier</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Heading -->
+          <tr>
+            <td align="center" style="padding: 28px 40px 0;">
+              <h1 style="margin: 0; font-family: 'Archivo', Arial, sans-serif; font-weight: 800; font-size: 24px; color: #1A2332; line-height: 1.2;">Welcome aboard!</h1>
+            </td>
+          </tr>
+
+          <!-- Body text -->
+          <tr>
+            <td align="center" style="padding: 12px 40px 0;">
+              <p style="margin: 0; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; color: #3D4F63; line-height: 1.6;">
+                Confirm your email to start filing your community relationships. Enter this code in the app:
+              </p>
+            </td>
+          </tr>
+
+          <!-- OTP Code -->
+          <tr>
+            <td align="center" style="padding: 24px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background-color: #FAF7F2; border: 2px solid #F0EAE0; border-radius: 12px; padding: 16px 32px;">
+                    <span style="font-family: 'Archivo', 'Courier New', monospace; font-weight: 800; font-size: 36px; letter-spacing: 8px; color: #1A2332;">{{ .Token }}</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Divider with "or" -->
+          <tr>
+            <td align="center" style="padding: 0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="border-bottom: 1px solid #F0EAE0; height: 1px; font-size: 0; line-height: 0;" width="45%">&nbsp;</td>
+                  <td align="center" style="padding: 0 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: #7A8A9E; white-space: nowrap;" width="10%">or</td>
+                  <td style="border-bottom: 1px solid #F0EAE0; height: 1px; font-size: 0; line-height: 0;" width="45%">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Magic link button -->
+          <tr>
+            <td align="center" style="padding: 24px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="background-color: #1976D2; border-radius: 50px; padding: 14px 32px;">
+                    <a href="{{ .ConfirmationURL }}" target="_blank" style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; display: inline-block;">Confirm my email &rarr;</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Expiry note -->
+          <tr>
+            <td align="center" style="padding: 16px 40px 0;">
+              <p style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: #7A8A9E; line-height: 1.5;">
+                This code expires in 10 minutes.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Safety note -->
+          <tr>
+            <td align="center" style="padding: 24px 40px 32px;">
+              <p style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: #7A8A9E; line-height: 1.5;">
+                Didn't sign up for Dossier? Just ignore this email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Inner card -->
+
+        <!-- Footer -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px;">
+          <tr>
+            <td align="center" style="padding: 24px 40px;">
+              <p style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: #7A8A9E; line-height: 1.5;">
+                Powered by <a href="https://nervous.net" target="_blank" style="color: #1976D2; text-decoration: none; font-weight: 600;">nervous</a> energy
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
