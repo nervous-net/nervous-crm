@@ -3,40 +3,25 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
 
+  // Redirect to dashboard once user is authenticated
   useEffect(() => {
-    // With implicit flow, Supabase auto-detects the access_token in the URL hash
-    // via detectSessionInUrl: true. We just listen for the auth state change.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        subscription.unsubscribe();
-        navigate('/dashboard', { replace: true });
-      }
-    });
+    if (!isLoading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, isLoading, navigate]);
 
-    // Also check if there's already an active session (in case the event fired before we subscribed)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        subscription.unsubscribe();
-        navigate('/dashboard', { replace: true });
-      }
-    });
-
-    // Fallback: if nothing happens after 10 seconds, redirect to login
+  // Fallback: if nothing happens after 10 seconds, redirect to login
+  useEffect(() => {
     const timeout = setTimeout(() => {
-      subscription.unsubscribe();
-      console.error('Auth callback timed out — no session detected');
       navigate('/login', { replace: true });
     }, 10000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
+    return () => clearTimeout(timeout);
   }, [navigate]);
 
   return (

@@ -1,91 +1,43 @@
 // ABOUTME: Authentication context using Supabase Auth with email OTP (magic link + code)
 // ABOUTME: Manages user session state and provides passwordless auth methods throughout the app
 
-import { createContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useState, useEffect, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  teamId: string;
-  teamName: string;
-  role: string;
-}
+import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isLoading: boolean;
   sendOtp: (email: string, metadata?: Record<string, string>) => Promise<void>;
   verifyOtp: (email: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-async function fetchUserProfile(supabaseUser: SupabaseUser): Promise<User | null> {
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*, teams(name)')
-    .eq('id', supabaseUser.id)
-    .single();
-
-  if (profileError || !profile) {
-    console.error('Failed to fetch profile:', profileError);
-    return null;
-  }
-
-  const teamName = (profile.teams as { name: string } | null)?.name || 'Unknown Team';
-
-  return {
-    id: profile.id,
-    email: profile.email,
-    name: profile.name,
-    teamId: profile.team_id,
-    teamName,
-    role: profile.role,
-  };
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshUser = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.user) {
-      setUser(null);
-      return;
-    }
-
-    const userProfile = await fetchUserProfile(session.user);
-    setUser(userProfile);
-  }, []);
-
   useEffect(() => {
-    // Initial session check
-    refreshUser().finally(() => setIsLoading(false));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT' || !session?.user) {
-          setUser(null);
-        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Set loading while we fetch the profile to prevent premature redirects
-          setIsLoading(true);
-          const userProfile = await fetchUserProfile(session.user);
-          setUser(userProfile);
-          setIsLoading(false);
-        }
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [refreshUser]);
+  }, []);
 
   const sendOtp = async (email: string, metadata?: Record<string, string>) => {
     const { error } = await supabase.auth.signInWithOtp({
@@ -112,8 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       throw new Error(error.message);
     }
-
-    // User will be set by onAuthStateChange listener
   };
 
   const logout = async () => {
@@ -122,10 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(error.message);
     }
     setUser(null);
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, sendOtp, verifyOtp, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, session, isLoading, sendOtp, verifyOtp, logout }}>
       {children}
     </AuthContext.Provider>
   );

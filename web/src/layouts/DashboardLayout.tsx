@@ -2,6 +2,7 @@
 // ABOUTME: Wraps all authenticated pages with sidebar nav, user info bar, and content area.
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import {
   LayoutDashboard,
   Users,
@@ -49,6 +50,7 @@ function DossierLogo({ className }: { className?: string }) {
 
 export function DashboardLayout() {
   const { user, isLoading, logout } = useAuth();
+  const { profile } = useProfile();
   const location = useLocation();
 
   if (isLoading) {
@@ -69,7 +71,7 @@ export function DashboardLayout() {
       <aside className="w-64 bg-[#1A2332] shadow-lg flex flex-col">
         <div className="p-6 border-b border-white/10">
           <DossierLogo />
-          <p className="text-sm text-white/50 mt-1">{user.teamName}</p>
+          <p className="text-sm text-white/50 mt-1">{profile?.teamName || ''}</p>
         </div>
 
         <nav className="flex-1 px-4 py-4 space-y-1">
@@ -98,7 +100,7 @@ export function DashboardLayout() {
         <div className="p-4 border-t border-white/10 bg-[hsl(48,100%,53%)]">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
+              <p className="text-sm font-semibold text-foreground truncate">{profile?.name || user.email}</p>
               <p className="text-xs text-foreground/70 truncate">{user.email}</p>
             </div>
             <button

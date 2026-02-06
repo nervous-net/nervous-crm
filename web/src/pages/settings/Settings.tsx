@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +8,16 @@ import { Badge } from '@/components/ui/badge';
 
 export default function Settings() {
   const { user } = useAuth();
+  const { profile, loading } = useProfile();
 
   if (!user) return null;
+  if (loading || !profile) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -25,7 +34,7 @@ export default function Settings() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
-            <Input id="name" defaultValue={user.name} />
+            <Input id="name" defaultValue={profile.name} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -44,12 +53,12 @@ export default function Settings() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">{user.teamName}</p>
-              <p className="text-sm text-muted-foreground">Team ID: {user.teamId}</p>
+              <p className="font-medium">{profile.teamName}</p>
+              <p className="text-sm text-muted-foreground">Team ID: {profile.teamId}</p>
             </div>
-            <Badge>{user.role}</Badge>
+            <Badge>{profile.role}</Badge>
           </div>
-          {(user.role === 'owner' || user.role === 'admin') && (
+          {(profile.role === 'owner' || profile.role === 'admin') && (
             <div className="pt-4 border-t">
               <Button variant="outline">Manage Team Members</Button>
             </div>
