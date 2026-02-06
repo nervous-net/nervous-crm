@@ -20,6 +20,7 @@ const DealDetail = lazy(() => import('./pages/deals/DealDetail'));
 const DealNew = lazy(() => import('./pages/deals/DealNew'));
 const Activities = lazy(() => import('./pages/activities/Activities'));
 const ActivityNew = lazy(() => import('./pages/activities/ActivityNew'));
+const ActivityEdit = lazy(() => import('./pages/activities/ActivityEdit'));
 const Settings = lazy(() => import('./pages/settings/Settings'));
 const TeamMembers = lazy(() => import('./pages/settings/TeamMembers'));
 
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
       { path: '/deals/:id', element: withSuspense(DealDetail) },
       { path: '/activities', element: withSuspense(Activities) },
       { path: '/activities/new', element: withSuspense(ActivityNew) },
+      { path: '/activities/:id', element: withSuspense(ActivityEdit) },
       { path: '/settings', element: withSuspense(Settings) },
       { path: '/settings/team', element: withSuspense(TeamMembers) },
     ],

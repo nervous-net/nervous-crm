@@ -141,7 +141,7 @@ export default function Activities() {
                       {activity.completed_at && <Check className="h-3 w-3" />}
                     </button>
 
-                    <div className="flex-1 min-w-0">
+                    <Link to={`/activities/${activity.id}`} className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <Badge className={activityColors[activity.type]}>
                           <Icon className="h-3 w-3 mr-1" />
@@ -167,23 +167,13 @@ export default function Activities() {
                           <span>{formatDate(activity.due_date)}</span>
                         )}
                         {activity.contact && (
-                          <Link
-                            to={`/contacts/${activity.contact.id}`}
-                            className="hover:text-primary"
-                          >
-                            {activity.contact.name}
-                          </Link>
+                          <span>{activity.contact.name}</span>
                         )}
                         {activity.deal && (
-                          <Link
-                            to={`/deals/${activity.deal.id}`}
-                            className="hover:text-primary"
-                          >
-                            {activity.deal.name}
-                          </Link>
+                          <span>{activity.deal.name}</span>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
