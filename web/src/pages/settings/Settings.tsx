@@ -8,13 +8,24 @@ import { Badge } from '@/components/ui/badge';
 
 export default function Settings() {
   const { user } = useAuth();
-  const { profile, loading } = useProfile();
+  const { profile, loading, error: profileError } = useProfile();
 
   if (!user) return null;
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  if (profileError || !profile) {
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <div>
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <p className="text-destructive">Failed to load profile. Try refreshing the page.</p>
+          {profileError && <p className="text-sm text-muted-foreground mt-1">{profileError}</p>}
+        </div>
       </div>
     );
   }

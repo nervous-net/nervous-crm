@@ -18,6 +18,7 @@ export function useProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -35,6 +36,7 @@ export function useProfile() {
 
       if (error) {
         console.error('Failed to fetch profile:', error);
+        setError(error.message);
       } else {
         const teamName = (data.teams as { name: string } | null)?.name || 'Unknown Team';
         setProfile({
@@ -45,6 +47,7 @@ export function useProfile() {
           teamName,
           role: data.role,
         });
+        setError(null);
       }
       setLoading(false);
     }
@@ -52,5 +55,5 @@ export function useProfile() {
     fetchProfile();
   }, [user]);
 
-  return { profile, loading };
+  return { profile, loading, error };
 }
