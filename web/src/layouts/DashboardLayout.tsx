@@ -1,5 +1,6 @@
 // ABOUTME: Main dashboard layout with dark sidebar, Dossier branding, and navigation.
 // ABOUTME: Wraps all authenticated pages with sidebar nav, user info bar, and content area.
+import { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -11,6 +12,8 @@ import {
   CheckSquare,
   Settings,
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +55,7 @@ export function DashboardLayout() {
   const { user, isLoading, logout } = useAuth();
   const { profile } = useProfile();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -67,11 +71,44 @@ export function DashboardLayout() {
 
   return (
     <div className="min-h-screen flex bg-background">
+      {/* Mobile header bar */}
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center gap-3 bg-[#1A2332] px-4 py-3 md:hidden">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-1 text-white/80 hover:text-white"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+        <DossierLogo />
+      </div>
+
+      {/* Backdrop overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar — dark ink tone */}
-      <aside className="w-64 bg-[#1A2332] shadow-lg flex flex-col">
-        <div className="p-6 border-b border-white/10">
-          <DossierLogo />
-          <p className="text-sm text-white/50 mt-1">{profile?.teamName || ''}</p>
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 w-64 bg-[#1A2332] shadow-lg flex flex-col transition-transform duration-200 ease-in-out',
+          'md:static md:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="flex items-center justify-between p-6 border-b border-white/10">
+          <div>
+            <DossierLogo />
+            <p className="text-sm text-white/50 mt-1">{profile?.teamName || ''}</p>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-1 text-white/60 hover:text-white md:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <nav className="flex-1 px-4 py-4 space-y-1">
@@ -83,6 +120,7 @@ export function DashboardLayout() {
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all',
                   isActive
@@ -115,8 +153,8 @@ export function DashboardLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">
+      <main className="flex-1 overflow-auto pt-14 md:pt-0">
+        <div className="p-4 md:p-8">
           <Outlet />
         </div>
       </main>

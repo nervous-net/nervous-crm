@@ -48,7 +48,7 @@ export default function CompanyDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
             <Link to="/companies">
@@ -56,7 +56,7 @@ export default function CompanyDetail() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">{company.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">{company.name}</h1>
             {company.industry && (
               <Badge variant="secondary">{company.industry}</Badge>
             )}

@@ -38,11 +38,11 @@ export default function Deals() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Deals Pipeline</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Deals Pipeline</h1>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-4 overflow-x-auto pb-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="flex-shrink-0 w-72">
+            <div key={i} className="flex-shrink-0 w-[85vw] sm:w-72">
               <div className="h-96 bg-muted animate-pulse rounded" />
             </div>
           ))}
@@ -57,9 +57,9 @@ export default function Deals() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Deals Pipeline</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Deals Pipeline</h1>
           <p className="text-muted-foreground">
             {formatCurrency(activeStages.reduce((sum, s) => sum + s.totalValue, 0))} in pipeline
           </p>
@@ -72,9 +72,9 @@ export default function Deals() {
         </Button>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-4 overflow-x-auto pb-4">
         {[...activeStages, ...closedStages].map((stage) => (
-          <div key={stage.stage} className="flex-shrink-0 w-72">
+          <div key={stage.stage} className="flex-shrink-0 w-[85vw] sm:w-72">
             <Card className={stageColors[stage.stage]}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
