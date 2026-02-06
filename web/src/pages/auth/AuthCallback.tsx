@@ -1,5 +1,5 @@
 // ABOUTME: Handles magic link redirects from Supabase email OTP auth
-// ABOUTME: Shows a spinner while waiting for onAuthStateChange to fire, then redirects
+// ABOUTME: Exchanges the PKCE code from the URL for a session, then redirects
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,21 +9,47 @@ export default function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        navigate('/', { replace: true });
+    async function handleCallback() {
+      // Supabase PKCE flow puts the code in the URL query params
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+          navigate('/', { replace: true });
+          return;
+        }
+        console.error('Code exchange failed:', error);
       }
-    });
 
-    // If no auth event fires within 5s, redirect to login
-    const timeout = setTimeout(() => {
+      // Also handle hash-based redirects (older Supabase flows)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+
+      if (accessToken) {
+        // Hash-based flow: Supabase client auto-detects and sets session
+        // Wait for onAuthStateChange to fire
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'SIGNED_IN') {
+            subscription.unsubscribe();
+            navigate('/', { replace: true });
+          }
+        });
+
+        // Fallback timeout
+        setTimeout(() => {
+          subscription.unsubscribe();
+          navigate('/login', { replace: true });
+        }, 5000);
+        return;
+      }
+
+      // No code or token found — redirect to login
       navigate('/login', { replace: true });
-    }, 5000);
+    }
 
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
+    handleCallback();
   }, [navigate]);
 
   return (
