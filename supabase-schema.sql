@@ -269,6 +269,10 @@ CREATE POLICY "Team admins can read invites"
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('owner', 'admin'))
   );
 
+CREATE POLICY "Anyone can read pending invites"
+  ON invites FOR SELECT
+  USING (status = 'pending' AND expires_at > now());
+
 CREATE POLICY "Team admins can create invites"
   ON invites FOR INSERT
   WITH CHECK (
@@ -281,6 +285,14 @@ CREATE POLICY "Team admins can update invites"
   USING (
     team_id = get_my_team_id() AND
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('owner', 'admin'))
+  );
+
+CREATE POLICY "Invitees can accept their own invite"
+  ON invites FOR UPDATE
+  USING (
+    auth.uid() IS NOT NULL
+    AND email = auth.jwt()->>'email'
+    AND status = 'pending'
   );
 
 -- ============================================
@@ -300,33 +312,40 @@ CREATE POLICY "System can insert audit logs"
 -- ============================================
 
 CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   new_team_id UUID;
-  team_name_val TEXT;
+  invite_team_id UUID;
   user_name_val TEXT;
+  user_role_val TEXT;
 BEGIN
-  -- Get values from user metadata
-  team_name_val := COALESCE(NEW.raw_user_meta_data->>'team_name', NEW.email || '''s Team');
-  user_name_val := COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1));
+  user_name_val := COALESCE(NEW.raw_user_meta_data->>'name', NEW.email);
 
-  -- Create a new team for the user
-  INSERT INTO teams (name) VALUES (team_name_val)
-  RETURNING id INTO new_team_id;
+  -- Check if this user was invited to an existing team
+  invite_team_id := (NEW.raw_user_meta_data->>'team_id')::UUID;
 
-  -- Create the profile
-  INSERT INTO profiles (id, email, name, role, team_id)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    user_name_val,
-    'owner',
-    new_team_id
-  );
+  IF invite_team_id IS NOT NULL THEN
+    -- Invited user: join the existing team with the invited role
+    user_role_val := COALESCE(NEW.raw_user_meta_data->>'role', 'member');
+
+    INSERT INTO profiles (id, email, name, role, team_id)
+    VALUES (NEW.id, NEW.email, user_name_val, user_role_val, invite_team_id);
+  ELSE
+    -- Regular signup: create a new team
+    INSERT INTO teams (name)
+    VALUES (COALESCE(NEW.raw_user_meta_data->>'team_name', 'My Team'))
+    RETURNING id INTO new_team_id;
+
+    INSERT INTO profiles (id, email, name, role, team_id)
+    VALUES (NEW.id, NEW.email, user_name_val, 'owner', new_team_id);
+  END IF;
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Create the trigger
 CREATE TRIGGER on_auth_user_created
