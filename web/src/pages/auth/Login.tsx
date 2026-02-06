@@ -2,7 +2,7 @@
 // ABOUTME: Two-step flow: email entry → OTP code verification
 
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,6 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function Login() {
   const { sendOtp, verifyOtp } = useAuth();
-  const navigate = useNavigate();
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -50,14 +49,13 @@ export default function Login() {
     setIsLoading(true);
     try {
       await verifyOtp(email, otpCode);
-      navigate('/dashboard');
+      // Don't navigate here — AuthLayout detects the user and redirects to /dashboard
     } catch (error) {
       toast({
         title: 'Verification failed',
         description: error instanceof Error ? error.message : 'Invalid code',
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };

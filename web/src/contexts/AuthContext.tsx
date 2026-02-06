@@ -75,8 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'SIGNED_OUT' || !session?.user) {
           setUser(null);
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Set loading while we fetch the profile to prevent premature redirects
+          setIsLoading(true);
           const userProfile = await fetchUserProfile(session.user);
           setUser(userProfile);
+          setIsLoading(false);
         }
       }
     );

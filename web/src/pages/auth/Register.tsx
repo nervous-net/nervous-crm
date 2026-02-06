@@ -2,7 +2,7 @@
 // ABOUTME: Two-step flow: name+email+team → OTP code verification
 
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,6 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function Register() {
   const { sendOtp, verifyOtp } = useAuth();
-  const navigate = useNavigate();
   const [step, setStep] = useState<'details' | 'otp'>('details');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -52,14 +51,13 @@ export default function Register() {
     setIsLoading(true);
     try {
       await verifyOtp(email, otpCode);
-      navigate('/dashboard');
+      // Don't navigate here — AuthLayout detects the user and redirects to /dashboard
     } catch (error) {
       toast({
         title: 'Verification failed',
         description: error instanceof Error ? error.message : 'Invalid code',
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };
