@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,7 +72,7 @@ export default function Settings() {
           </div>
           {(profile.role === 'owner' || profile.role === 'admin') && (
             <div className="pt-4 border-t">
-              <Button variant="outline">Manage Team Members</Button>
+              <Button variant="outline" asChild><Link to="/settings/team">Manage Team Members</Link></Button>
             </div>
           )}
         </CardContent>

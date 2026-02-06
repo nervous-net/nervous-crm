@@ -503,6 +503,88 @@ export async function getCurrentUser() {
   return profile;
 }
 
+// ============================================
+// TEAM MANAGEMENT
+// ============================================
+
+export async function getTeamMembers() {
+  const teamId = await getTeamId();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, email, name, role, created_at')
+    .eq('team_id', teamId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateMemberRole(userId: string, role: 'admin' | 'member' | 'viewer') {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ role })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function removeMember(userId: string) {
+  const { error } = await supabase
+    .from('profiles')
+    .delete()
+    .eq('id', userId);
+
+  if (error) throw error;
+}
+
+export async function getTeamInvites() {
+  const teamId = await getTeamId();
+  const { data, error } = await supabase
+    .from('invites')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createInvite(email: string, role: 'admin' | 'member' | 'viewer') {
+  const teamId = await getTeamId();
+  const token = crypto.randomUUID();
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+
+  const { data, error } = await supabase
+    .from('invites')
+    .insert({
+      team_id: teamId,
+      email,
+      role,
+      token,
+      status: 'pending',
+      expires_at: expiresAt.toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function cancelInvite(id: string) {
+  const { error } = await supabase
+    .from('invites')
+    .update({ status: 'expired' as const })
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
 export async function updateProfile(data: { name?: string }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');

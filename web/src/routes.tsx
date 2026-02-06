@@ -21,6 +21,7 @@ const DealNew = lazy(() => import('./pages/deals/DealNew'));
 const Activities = lazy(() => import('./pages/activities/Activities'));
 const ActivityNew = lazy(() => import('./pages/activities/ActivityNew'));
 const Settings = lazy(() => import('./pages/settings/Settings'));
+const TeamMembers = lazy(() => import('./pages/settings/TeamMembers'));
 
 function PageLoader() {
   return (
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
       { path: '/activities', element: withSuspense(Activities) },
       { path: '/activities/new', element: withSuspense(ActivityNew) },
       { path: '/settings', element: withSuspense(Settings) },
+      { path: '/settings/team', element: withSuspense(TeamMembers) },
     ],
   },
 ]);
