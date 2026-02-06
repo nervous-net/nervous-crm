@@ -63,7 +63,8 @@ export function AuthLayout() {
               className="text-primary hover:underline font-semibold"
             >
               nervous
-            </a>
+            </a>{' '}
+            energy
           </p>
         </div>
       </div>
