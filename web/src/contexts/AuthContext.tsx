@@ -1,5 +1,5 @@
-// ABOUTME: Authentication context using Supabase Auth
-// ABOUTME: Manages user session state and provides auth methods throughout the app
+// ABOUTME: Authentication context using Supabase Auth with email OTP (magic link + code)
+// ABOUTME: Manages user session state and provides passwordless auth methods throughout the app
 
 import { createContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -17,8 +17,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; name: string; teamName: string }) => Promise<void>;
+  sendOtp: (email: string, metadata?: Record<string, string>) => Promise<void>;
+  verifyOtp: (email: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -84,37 +84,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [refreshUser]);
 
-  const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+  const sendOtp = async (email: string, metadata?: Record<string, string>) => {
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    // User will be set by onAuthStateChange listener
-  };
-
-  const register = async (data: { email: string; password: string; name: string; teamName: string }) => {
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
       options: {
-        data: {
-          name: data.name,
-          team_name: data.teamName,
-        },
+        shouldCreateUser: true,
+        emailRedirectTo: window.location.origin + '/auth/callback',
+        data: metadata,
       },
     });
 
     if (error) {
       throw new Error(error.message);
     }
+  };
+
+  const verifyOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
 
     // User will be set by onAuthStateChange listener
-    // Note: Depending on Supabase settings, user may need to confirm email first
   };
 
   const logout = async () => {
@@ -126,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, sendOtp, verifyOtp, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

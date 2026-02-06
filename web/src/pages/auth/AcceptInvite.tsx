@@ -1,5 +1,5 @@
-// ABOUTME: Page for accepting team invites via Supabase
-// ABOUTME: Validates invite token and creates user account
+// ABOUTME: Page for accepting team invites via Supabase with passwordless OTP auth
+// ABOUTME: Validates invite token, sends OTP, and creates user account on verification
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -15,7 +15,6 @@ import { toast } from '@/components/ui/use-toast';
 
 const acceptInviteSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 type AcceptInviteForm = z.infer<typeof acceptInviteSchema>;
@@ -27,6 +26,8 @@ interface InviteInfo {
   teamId: string;
 }
 
+const RESEND_COOLDOWN_SECONDS = 60;
+
 export default function AcceptInvite() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -34,6 +35,10 @@ export default function AcceptInvite() {
   const [isValidating, setIsValidating] = useState(true);
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<'details' | 'otp'>('details');
+  const [otpCode, setOtpCode] = useState('');
+  const [userName, setUserName] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const {
     register,
@@ -42,6 +47,14 @@ export default function AcceptInvite() {
   } = useForm<AcceptInviteForm>({
     resolver: zodResolver(acceptInviteSchema),
   });
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   useEffect(() => {
     async function validateToken() {
@@ -85,39 +98,73 @@ export default function AcceptInvite() {
     validateToken();
   }, [token]);
 
+  const sendInviteOtp = async () => {
+    if (!inviteInfo) return;
+
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: inviteInfo.email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: window.location.origin + '/auth/callback',
+        data: {
+          name: userName,
+          team_id: inviteInfo.teamId,
+          role: inviteInfo.role,
+        },
+      },
+    });
+
+    if (otpError) {
+      throw new Error(otpError.message);
+    }
+  };
+
   const onSubmit = async (data: AcceptInviteForm) => {
     if (!token || !inviteInfo) return;
 
     setIsLoading(true);
+    setUserName(data.name);
     try {
-      // Create the user account with Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      await sendInviteOtp();
+      setStep('otp');
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+      toast({
+        title: 'Failed to send code',
+        description: err instanceof Error ? err.message : 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!token || !inviteInfo) return;
+
+    setIsLoading(true);
+    try {
+      const { data: authData, error: verifyError } = await supabase.auth.verifyOtp({
         email: inviteInfo.email,
-        password: data.password,
-        options: {
-          data: {
-            name: data.name,
-            team_id: inviteInfo.teamId,
-            role: inviteInfo.role,
-          },
-        },
+        token: otpCode,
+        type: 'email',
       });
 
-      if (signUpError) {
-        throw new Error(signUpError.message);
+      if (verifyError) {
+        throw new Error(verifyError.message);
       }
 
       if (!authData.user) {
-        throw new Error('Failed to create account');
+        throw new Error('Failed to verify account');
       }
 
-      // Create the profile manually (in case the trigger doesn't handle invited users)
+      // Upsert the profile with the correct team/role from the invite
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: authData.user.id,
           email: inviteInfo.email,
-          name: data.name,
+          name: userName,
           team_id: inviteInfo.teamId,
           role: inviteInfo.role as 'admin' | 'member' | 'viewer',
         });
@@ -134,12 +181,29 @@ export default function AcceptInvite() {
 
       toast({
         title: 'Welcome!',
-        description: 'Your account has been created. Please sign in.',
+        description: `You've joined ${inviteInfo.teamName}.`,
       });
-      navigate('/login');
+      navigate('/');
     } catch (err) {
       toast({
-        title: 'Failed to accept invite',
+        title: 'Verification failed',
+        description: err instanceof Error ? err.message : 'Invalid code',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    setIsLoading(true);
+    try {
+      await sendInviteOtp();
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+      toast({
+        title: 'Failed to resend code',
         description: err instanceof Error ? err.message : 'Please try again',
         variant: 'destructive',
       });
@@ -176,6 +240,59 @@ export default function AcceptInvite() {
     );
   }
 
+  if (step === 'otp') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Check your email</CardTitle>
+          <CardDescription>
+            We sent a 6-digit code to {inviteInfo.email}
+          </CardDescription>
+        </CardHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleVerifyOtp();
+          }}
+        >
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="otp">Verification code</Label>
+              <Input
+                id="otp"
+                type="text"
+                inputMode="numeric"
+                placeholder="123456"
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                autoFocus
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              You can also click the magic link in the email.
+            </p>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4">
+            <Button type="submit" className="w-full" disabled={isLoading || otpCode.length !== 6}>
+              {isLoading ? 'Verifying...' : 'Verify & join team'}
+            </Button>
+            <div className="flex items-center justify-between w-full text-sm">
+              <button
+                type="button"
+                className="text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                onClick={handleResend}
+                disabled={resendCooldown > 0}
+              >
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+              </button>
+            </div>
+          </CardFooter>
+        </form>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -201,22 +318,10 @@ export default function AcceptInvite() {
               <p className="text-sm text-destructive">{errors.name.message}</p>
             )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Create password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Minimum 8 characters"
-              {...register('password')}
-            />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
-            )}
-          </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Creating account...' : 'Accept Invite'}
+            {isLoading ? 'Sending code...' : 'Accept Invite'}
           </Button>
         </CardFooter>
       </form>

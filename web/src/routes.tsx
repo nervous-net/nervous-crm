@@ -6,6 +6,7 @@ import { lazy, Suspense } from 'react';
 const Login = lazy(() => import('./pages/auth/Login'));
 const Register = lazy(() => import('./pages/auth/Register'));
 const AcceptInvite = lazy(() => import('./pages/auth/AcceptInvite'));
+const AuthCallback = lazy(() => import('./pages/auth/AuthCallback'));
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Contacts = lazy(() => import('./pages/contacts/Contacts'));
@@ -38,6 +39,8 @@ function withSuspense(Component: React.ComponentType) {
 }
 
 export const router = createBrowserRouter([
+  // Auth callback must be outside AuthLayout to avoid redirect race conditions
+  { path: '/auth/callback', element: withSuspense(AuthCallback) },
   {
     element: <AuthLayout />,
     children: [

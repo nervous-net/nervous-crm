@@ -59,11 +59,13 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Security</CardTitle>
-          <CardDescription>Manage your password and security settings</CardDescription>
+          <CardTitle>Authentication</CardTitle>
+          <CardDescription>How you sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline">Change Password</Button>
+          <p className="text-sm text-muted-foreground">
+            You sign in via email code sent to <span className="font-medium text-foreground">{user.email}</span>
+          </p>
         </CardContent>
       </Card>
 
