@@ -590,6 +590,11 @@ export async function deleteAccount() {
   if (error) throw error;
 }
 
+export async function transferOwnership(newOwnerId: string) {
+  const { error } = await supabase.rpc('transfer_ownership', { new_owner_id: newOwnerId });
+  if (error) throw error;
+}
+
 export async function updateProfile(data: { name?: string }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');

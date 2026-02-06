@@ -12,6 +12,7 @@ import {
   getTeamInvites,
   createInvite,
   cancelInvite,
+  transferOwnership,
 } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,8 @@ import { toast } from '@/components/ui/use-toast';
 export default function TeamMembers() {
   const queryClient = useQueryClient();
   const { profile } = useProfile();
-  const isAdmin = profile?.role === 'owner' || profile?.role === 'admin';
+  const isOwner = profile?.role === 'owner';
+  const isAdmin = isOwner || profile?.role === 'admin';
 
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'member' | 'viewer'>('member');
@@ -85,6 +87,23 @@ export default function TeamMembers() {
       toast({ title: 'Failed to cancel invite', variant: 'destructive' });
     },
   });
+
+  const transferOwnershipMutation = useMutation({
+    mutationFn: (newOwnerId: string) => transferOwnership(newOwnerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast({ title: 'Ownership transferred' });
+    },
+    onError: () => {
+      toast({ title: 'Failed to transfer ownership', variant: 'destructive' });
+    },
+  });
+
+  function handleTransferOwnership(userId: string, name: string) {
+    if (!window.confirm(`Transfer ownership to ${name}? You will be demoted to admin.`)) return;
+    transferOwnershipMutation.mutate(userId);
+  }
 
   function handleInviteSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -155,6 +174,16 @@ export default function TeamMembers() {
                       <option value="member">member</option>
                       <option value="viewer">viewer</option>
                     </select>
+                    {isOwner && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTransferOwnership(member.id, member.name || member.email)}
+                        disabled={transferOwnershipMutation.isPending}
+                      >
+                        Transfer Ownership
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

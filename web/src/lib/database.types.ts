@@ -396,6 +396,10 @@ export type Database = {
         Args: Record<string, never>
         Returns: string
       }
+      transfer_ownership: {
+        Args: { new_owner_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
