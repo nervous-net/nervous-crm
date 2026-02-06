@@ -585,6 +585,11 @@ export async function cancelInvite(id: string) {
   if (error) throw error;
 }
 
+export async function deleteAccount() {
+  const { error } = await supabase.rpc('delete_own_account');
+  if (error) throw error;
+}
+
 export async function updateProfile(data: { name?: string }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');

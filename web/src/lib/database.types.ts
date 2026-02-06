@@ -388,6 +388,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_own_account: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
       get_my_team_id: {
         Args: Record<string, never>
         Returns: string

@@ -1,15 +1,22 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { deleteAccount } from '@/lib/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/use-toast';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { profile, loading, error: profileError } = useProfile();
+  const navigate = useNavigate();
+  const [confirmText, setConfirmText] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!user) return null;
   if (loading) {
@@ -30,6 +37,25 @@ export default function Settings() {
       </div>
     );
   }
+
+  const handleDeleteAccount = async () => {
+    if (confirmText !== 'DELETE') return;
+
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      await logout();
+      navigate('/login');
+    } catch (err) {
+      toast({
+        title: 'Failed to delete account',
+        description: err instanceof Error ? err.message : 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -95,8 +121,47 @@ export default function Settings() {
           <CardTitle className="text-destructive">Danger Zone</CardTitle>
           <CardDescription>Irreversible actions</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button variant="destructive">Delete Account</Button>
+        <CardContent className="space-y-4">
+          {!showDeleteConfirm ? (
+            <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
+              Delete Account
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                This will permanently delete your account and all associated data. This action cannot be undone.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-delete">Type <span className="font-mono font-bold">DELETE</span> to confirm</Label>
+                <Input
+                  id="confirm-delete"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={confirmText !== 'DELETE' || isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Permanently Delete Account'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setConfirmText('');
+                  }}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
