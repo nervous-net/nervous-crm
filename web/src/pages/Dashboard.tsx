@@ -1,12 +1,19 @@
+// ABOUTME: Main dashboard page showing CRM overview
+// ABOUTME: Displays deal stats, upcoming activities, and recent contacts
+
 import { Link } from 'react-router-dom';
-import { useDashboard } from '@/hooks/useDashboard';
+import { useQuery } from '@tanstack/react-query';
+import { getDashboardData } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Handshake, Trophy, AlertCircle, Clock, Users } from 'lucide-react';
 
 export default function Dashboard() {
-  const { data, isLoading, error } = useDashboard();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: getDashboardData,
+  });
 
   if (isLoading) {
     return (
@@ -46,7 +53,6 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Welcome back! Here's what's happening.</p>
       </div>
 
-      {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -100,7 +106,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Activities */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -116,12 +121,14 @@ export default function Dashboard() {
                 {data.activities.upcoming.slice(0, 5).map((activity) => (
                   <div key={activity.id} className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium">{activity.title}</p>
+                      <p className="text-sm font-medium">{activity.subject}</p>
                       <p className="text-xs text-muted-foreground">
-                        {activity.contact?.name || activity.deal?.title || 'No associated record'}
+                        {activity.contact?.name || activity.deal?.name || 'No associated record'}
                       </p>
                     </div>
-                    <Badge variant="secondary">{formatDate(activity.dueAt)}</Badge>
+                    {activity.due_date && (
+                      <Badge variant="secondary">{formatDate(activity.due_date)}</Badge>
+                    )}
                   </div>
                 ))}
               </div>
@@ -135,7 +142,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Contacts */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -161,7 +167,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {formatDate(contact.createdAt)}
+                      {formatDate(contact.created_at)}
                     </span>
                   </Link>
                 ))}

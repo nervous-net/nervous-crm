@@ -1,10 +1,13 @@
+// ABOUTME: Create new company form page
+// ABOUTME: Handles company creation with validation
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { createCompany } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +17,7 @@ import { ArrowLeft } from 'lucide-react';
 
 const companySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
-  domain: z.string().max(255).optional().or(z.literal('')),
+  website: z.string().max(255).optional().or(z.literal('')),
   industry: z.string().max(100).optional().or(z.literal('')),
 });
 
@@ -33,19 +36,18 @@ export default function CompanyNew() {
     resolver: zodResolver(companySchema),
     defaultValues: {
       name: '',
-      domain: '',
+      website: '',
       industry: '',
     },
   });
 
   const createMutation = useMutation({
     mutationFn: (data: CompanyForm) => {
-      const payload = {
-        ...data,
-        domain: data.domain || undefined,
+      return createCompany({
+        name: data.name,
+        website: data.website || undefined,
         industry: data.industry || undefined,
-      };
-      return api.post('/companies', payload);
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
@@ -100,14 +102,14 @@ export default function CompanyNew() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="domain">Website Domain</Label>
+              <Label htmlFor="website">Website</Label>
               <Input
-                id="domain"
+                id="website"
                 placeholder="acme.com"
-                {...register('domain')}
+                {...register('website')}
               />
-              {errors.domain && (
-                <p className="text-sm text-destructive">{errors.domain.message}</p>
+              {errors.website && (
+                <p className="text-sm text-destructive">{errors.website.message}</p>
               )}
             </div>
 

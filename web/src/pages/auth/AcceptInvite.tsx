@@ -1,9 +1,12 @@
+// ABOUTME: Page for accepting team invites via Supabase
+// ABOUTME: Validates invite token and creates user account
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { api } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +24,7 @@ interface InviteInfo {
   email: string;
   teamName: string;
   role: string;
+  teamId: string;
 }
 
 export default function AcceptInvite() {
@@ -48,8 +52,29 @@ export default function AcceptInvite() {
       }
 
       try {
-        const response = await api.get<{ data: InviteInfo }>(`/auth/invite/${token}`);
-        setInviteInfo(response.data);
+        // Find the invite by token
+        const { data: invite, error: inviteError } = await supabase
+          .from('invites')
+          .select('*, teams(name)')
+          .eq('token', token)
+          .eq('status', 'pending')
+          .gt('expires_at', new Date().toISOString())
+          .single();
+
+        if (inviteError || !invite) {
+          setError('This invite link is invalid or has expired');
+          setIsValidating(false);
+          return;
+        }
+
+        const teamName = (invite.teams as { name: string } | null)?.name || 'Unknown Team';
+
+        setInviteInfo({
+          email: invite.email,
+          teamName,
+          role: invite.role,
+          teamId: invite.team_id,
+        });
       } catch {
         setError('This invite link is invalid or has expired');
       } finally {
@@ -61,15 +86,52 @@ export default function AcceptInvite() {
   }, [token]);
 
   const onSubmit = async (data: AcceptInviteForm) => {
-    if (!token) return;
+    if (!token || !inviteInfo) return;
 
     setIsLoading(true);
     try {
-      await api.post('/auth/accept-invite', {
-        token,
-        name: data.name,
+      // Create the user account with Supabase Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: inviteInfo.email,
         password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            team_id: inviteInfo.teamId,
+            role: inviteInfo.role,
+          },
+        },
       });
+
+      if (signUpError) {
+        throw new Error(signUpError.message);
+      }
+
+      if (!authData.user) {
+        throw new Error('Failed to create account');
+      }
+
+      // Create the profile manually (in case the trigger doesn't handle invited users)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          email: inviteInfo.email,
+          name: data.name,
+          team_id: inviteInfo.teamId,
+          role: inviteInfo.role as 'admin' | 'member' | 'viewer',
+        });
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+      }
+
+      // Mark the invite as accepted
+      await supabase
+        .from('invites')
+        .update({ status: 'accepted' })
+        .eq('token', token);
+
       toast({
         title: 'Welcome!',
         description: 'Your account has been created. Please sign in.',

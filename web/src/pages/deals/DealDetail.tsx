@@ -1,25 +1,14 @@
+// ABOUTME: Deal detail page showing deal info and associations
+// ABOUTME: Displays deal value, stage, company, and contact
+
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getDeal } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ArrowLeft, DollarSign, Building2, User, Calendar } from 'lucide-react';
-
-interface Deal {
-  id: string;
-  title: string;
-  value?: number;
-  stage: string;
-  probability?: number;
-  company?: { id: string; name: string };
-  contact?: { id: string; name: string };
-  owner: { id: string; name: string; email: string };
-  closedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 const stageLabels: Record<string, string> = {
   lead: 'Lead',
@@ -30,21 +19,21 @@ const stageLabels: Record<string, string> = {
   lost: 'Lost',
 };
 
-const stageBadgeVariant: Record<string, 'default' | 'secondary' | 'success' | 'destructive'> = {
+const stageBadgeVariant: Record<string, 'default' | 'secondary' | 'destructive'> = {
   lead: 'secondary',
   qualified: 'secondary',
   proposal: 'default',
   negotiation: 'default',
-  won: 'success',
+  won: 'default',
   lost: 'destructive',
 };
 
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
 
-  const { data, isLoading, error } = useQuery({
+  const { data: deal, isLoading, error } = useQuery({
     queryKey: ['deal', id],
-    queryFn: () => api.get<{ data: Deal }>(`/deals/${id}?include=company,contact`),
+    queryFn: () => getDeal(id!),
     enabled: !!id,
   });
 
@@ -57,7 +46,7 @@ export default function DealDetail() {
     );
   }
 
-  if (error || !data?.data) {
+  if (error || !deal) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" asChild>
@@ -75,8 +64,6 @@ export default function DealDetail() {
     );
   }
 
-  const deal = data.data;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -88,7 +75,7 @@ export default function DealDetail() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{deal.title}</h1>
+              <h1 className="text-3xl font-bold">{deal.name}</h1>
               <Badge variant={stageBadgeVariant[deal.stage]}>
                 {stageLabels[deal.stage]}
               </Badge>
@@ -96,7 +83,7 @@ export default function DealDetail() {
             {deal.value && (
               <p className="text-xl text-muted-foreground flex items-center gap-1">
                 <DollarSign className="h-5 w-5" />
-                {formatCurrency(deal.value)}
+                {formatCurrency(Number(deal.value))}
               </p>
             )}
           </div>
@@ -126,14 +113,10 @@ export default function DealDetail() {
                 </Link>
               </div>
             )}
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span>Owner: {deal.owner.name}</span>
-            </div>
-            {deal.probability !== undefined && (
+            {deal.expected_close && (
               <div>
-                <p className="text-sm text-muted-foreground">Win Probability</p>
-                <p>{deal.probability}%</p>
+                <p className="text-sm text-muted-foreground">Expected Close</p>
+                <p>{formatDate(deal.expected_close)}</p>
               </div>
             )}
           </CardContent>
@@ -148,25 +131,16 @@ export default function DealDetail() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Created</p>
-                <p>{formatDate(deal.createdAt)}</p>
+                <p>{formatDate(deal.created_at)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Last Updated</p>
-                <p>{formatDate(deal.updatedAt)}</p>
+                <p>{formatDate(deal.updated_at)}</p>
               </div>
             </div>
-            {deal.closedAt && (
-              <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Closed</p>
-                  <p>{formatDate(deal.closedAt)}</p>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>

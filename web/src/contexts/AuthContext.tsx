@@ -1,5 +1,9 @@
+// ABOUTME: Authentication context using Supabase Auth
+// ABOUTME: Manages user session state and provides auth methods throughout the app
+
 import { createContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { api } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -21,35 +25,103 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+async function fetchUserProfile(supabaseUser: SupabaseUser): Promise<User | null> {
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*, teams(name)')
+    .eq('id', supabaseUser.id)
+    .single();
+
+  if (profileError || !profile) {
+    console.error('Failed to fetch profile:', profileError);
+    return null;
+  }
+
+  const teamName = (profile.teams as { name: string } | null)?.name || 'Unknown Team';
+
+  return {
+    id: profile.id,
+    email: profile.email,
+    name: profile.name,
+    teamId: profile.team_id,
+    teamName,
+    role: profile.role,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    try {
-      const response = await api.get<{ data: User }>('/users/me');
-      setUser(response.data);
-    } catch {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.user) {
       setUser(null);
+      return;
     }
+
+    const userProfile = await fetchUserProfile(session.user);
+    setUser(userProfile);
   }, []);
 
   useEffect(() => {
+    // Initial session check
     refreshUser().finally(() => setIsLoading(false));
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          setUser(null);
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          const userProfile = await fetchUserProfile(session.user);
+          setUser(userProfile);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, [refreshUser]);
 
   const login = async (email: string, password: string) => {
-    const response = await api.post<{ data: { user: User } }>('/auth/login', { email, password });
-    setUser(response.data.user);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // User will be set by onAuthStateChange listener
   };
 
   const register = async (data: { email: string; password: string; name: string; teamName: string }) => {
-    const response = await api.post<{ data: { user: User } }>('/auth/register', data);
-    setUser(response.data.user);
+    const { error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          name: data.name,
+          team_name: data.teamName,
+        },
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // User will be set by onAuthStateChange listener
+    // Note: Depending on Supabase settings, user may need to confirm email first
   };
 
   const logout = async () => {
-    await api.post('/auth/logout');
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw new Error(error.message);
+    }
     setUser(null);
   };
 

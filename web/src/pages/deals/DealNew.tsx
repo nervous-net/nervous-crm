@@ -1,10 +1,13 @@
+// ABOUTME: Create new deal form page
+// ABOUTME: Handles deal creation with company/contact selection
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getCompanies, getContacts, createDeal } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,39 +16,28 @@ import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
 
 const dealSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(200),
+  name: z.string().min(1, 'Title is required').max(200),
   value: z.string().optional().or(z.literal('')),
   stage: z.enum(['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost']),
-  probability: z.string().optional().or(z.literal('')),
-  companyId: z.string().optional().or(z.literal('')),
-  contactId: z.string().optional().or(z.literal('')),
+  company_id: z.string().optional().or(z.literal('')),
+  contact_id: z.string().optional().or(z.literal('')),
 });
 
 type DealForm = z.infer<typeof dealSchema>;
-
-interface Company {
-  id: string;
-  name: string;
-}
-
-interface Contact {
-  id: string;
-  name: string;
-}
 
 export default function DealNew() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: companiesData } = useQuery({
+  const { data: companies } = useQuery({
     queryKey: ['companies-list'],
-    queryFn: () => api.get<{ data: Company[] }>('/companies?limit=100'),
+    queryFn: () => getCompanies(),
   });
 
-  const { data: contactsData } = useQuery({
+  const { data: contacts } = useQuery({
     queryKey: ['contacts-list'],
-    queryFn: () => api.get<{ data: Contact[] }>('/contacts?limit=100'),
+    queryFn: () => getContacts(),
   });
 
   const {
@@ -55,26 +47,23 @@ export default function DealNew() {
   } = useForm<DealForm>({
     resolver: zodResolver(dealSchema),
     defaultValues: {
-      title: '',
+      name: '',
       value: '',
       stage: 'lead',
-      probability: '',
-      companyId: '',
-      contactId: '',
+      company_id: '',
+      contact_id: '',
     },
   });
 
   const createMutation = useMutation({
     mutationFn: (data: DealForm) => {
-      const payload = {
-        title: data.title,
+      return createDeal({
+        name: data.name,
         value: data.value ? parseFloat(data.value) : undefined,
         stage: data.stage,
-        probability: data.probability ? parseInt(data.probability, 10) : undefined,
-        companyId: data.companyId || undefined,
-        contactId: data.contactId || undefined,
-      };
-      return api.post('/deals', payload);
+        company_id: data.company_id || undefined,
+        contact_id: data.contact_id || undefined,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
@@ -118,14 +107,14 @@ export default function DealNew() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Deal Title *</Label>
+              <Label htmlFor="name">Deal Title *</Label>
               <Input
-                id="title"
+                id="name"
                 placeholder="Enterprise Software License"
-                {...register('title')}
+                {...register('name')}
               />
-              {errors.title && (
-                <p className="text-sm text-destructive">{errors.title.message}</p>
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name.message}</p>
               )}
             </div>
 
@@ -145,46 +134,31 @@ export default function DealNew() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="probability">Win Probability (%)</Label>
-                <Input
-                  id="probability"
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="50"
-                  {...register('probability')}
-                />
-                {errors.probability && (
-                  <p className="text-sm text-destructive">{errors.probability.message}</p>
-                )}
+                <Label htmlFor="stage">Stage *</Label>
+                <select
+                  id="stage"
+                  {...register('stage')}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="lead">Lead</option>
+                  <option value="qualified">Qualified</option>
+                  <option value="proposal">Proposal</option>
+                  <option value="negotiation">Negotiation</option>
+                  <option value="won">Won</option>
+                  <option value="lost">Lost</option>
+                </select>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="stage">Stage *</Label>
+              <Label htmlFor="company_id">Company</Label>
               <select
-                id="stage"
-                {...register('stage')}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <option value="lead">Lead</option>
-                <option value="qualified">Qualified</option>
-                <option value="proposal">Proposal</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="won">Won</option>
-                <option value="lost">Lost</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="companyId">Company</Label>
-              <select
-                id="companyId"
-                {...register('companyId')}
+                id="company_id"
+                {...register('company_id')}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">No company</option>
-                {companiesData?.data.map((company) => (
+                {companies?.map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}
                   </option>
@@ -193,14 +167,14 @@ export default function DealNew() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contactId">Contact</Label>
+              <Label htmlFor="contact_id">Contact</Label>
               <select
-                id="contactId"
-                {...register('contactId')}
+                id="contact_id"
+                {...register('contact_id')}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">No contact</option>
-                {contactsData?.data.map((contact) => (
+                {contacts?.map((contact) => (
                   <option key={contact.id} value={contact.id}>
                     {contact.name}
                   </option>

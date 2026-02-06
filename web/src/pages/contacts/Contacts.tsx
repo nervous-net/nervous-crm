@@ -1,7 +1,10 @@
+// ABOUTME: Contacts list page with search functionality
+// ABOUTME: Displays all contacts with company associations
+
 import { useState, useDeferredValue } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getContacts } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,34 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { Plus, Search, Mail, Phone } from 'lucide-react';
 
-interface Contact {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  title?: string;
-  company?: { id: string; name: string };
-  owner: { id: string; name: string };
-  createdAt: string;
-}
-
-interface ContactsResponse {
-  data: Contact[];
-  pagination: {
-    total: number;
-    limit: number;
-    cursor: string | null;
-    hasMore: boolean;
-  };
-}
-
 export default function Contacts() {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
 
-  const { data, isLoading } = useQuery({
+  const { data: contacts, isLoading } = useQuery({
     queryKey: ['contacts', deferredSearch],
-    queryFn: () => api.get<ContactsResponse>(`/contacts?search=${deferredSearch}&limit=50`),
+    queryFn: () => getContacts({ search: deferredSearch || undefined }),
   });
 
   return (
@@ -45,7 +27,7 @@ export default function Contacts() {
         <div>
           <h1 className="text-3xl font-bold">Contacts</h1>
           <p className="text-muted-foreground">
-            {data?.pagination.total || 0} contacts
+            {contacts?.length || 0} contacts
           </p>
         </div>
         <Button asChild>
@@ -78,7 +60,7 @@ export default function Contacts() {
             </Card>
           ))}
         </div>
-      ) : !data?.data.length ? (
+      ) : !contacts?.length ? (
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-muted-foreground">
@@ -88,7 +70,7 @@ export default function Contacts() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {data.data.map((contact) => (
+          {contacts.map((contact) => (
             <Link key={contact.id} to={`/contacts/${contact.id}`}>
               <Card className="hover:border-primary transition-colors">
                 <CardHeader className="pb-2">
@@ -116,7 +98,7 @@ export default function Contacts() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground pt-2">
-                    Added {formatDate(contact.createdAt)}
+                    Added {formatDate(contact.created_at)}
                   </p>
                 </CardContent>
               </Card>

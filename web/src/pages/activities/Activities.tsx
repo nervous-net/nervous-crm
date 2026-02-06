@@ -1,35 +1,16 @@
+// ABOUTME: Activities list page with filter tabs
+// ABOUTME: Displays all activities with ability to mark complete
+
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getActivities, getUpcomingActivities, getOverdueActivities, completeActivity } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { Plus, Check, Clock, AlertCircle, Phone, Mail, Calendar, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface Activity {
-  id: string;
-  type: string;
-  title: string;
-  description?: string;
-  dueAt?: string;
-  completedAt?: string;
-  contact?: { id: string; name: string };
-  deal?: { id: string; title: string };
-  user: { id: string; name: string };
-}
-
-interface ActivitiesResponse {
-  data: Activity[];
-  pagination: {
-    total: number;
-    limit: number;
-    cursor: string | null;
-    hasMore: boolean;
-  };
-}
 
 const activityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   call: Phone,
@@ -49,29 +30,26 @@ export default function Activities() {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'overdue'>('all');
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data: activities, isLoading } = useQuery({
     queryKey: ['activities', filter],
     queryFn: () => {
       if (filter === 'upcoming') {
-        return api.get<{ data: Activity[] }>('/activities/upcoming');
+        return getUpcomingActivities(7);
       }
       if (filter === 'overdue') {
-        return api.get<{ data: Activity[] }>('/activities/overdue');
+        return getOverdueActivities();
       }
-      return api.get<ActivitiesResponse>('/activities?limit=50&sort=dueAt');
+      return getActivities();
     },
   });
 
   const toggleMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/activities/${id}/toggle`),
+    mutationFn: (id: string) => completeActivity(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
-
-  const activities = filter === 'all'
-    ? (data as ActivitiesResponse | undefined)?.data || []
-    : (data as { data: Activity[] } | undefined)?.data || [];
 
   return (
     <div className="space-y-6">
@@ -126,7 +104,7 @@ export default function Activities() {
             </Card>
           ))}
         </div>
-      ) : !activities.length ? (
+      ) : !activities?.length ? (
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-muted-foreground">
@@ -138,28 +116,29 @@ export default function Activities() {
         <div className="space-y-2">
           {activities.map((activity) => {
             const Icon = activityIcons[activity.type] || FileText;
-            const isOverdue = activity.dueAt && !activity.completedAt && new Date(activity.dueAt) < new Date();
+            const isOverdue = activity.due_date && !activity.completed_at && new Date(activity.due_date) < new Date();
 
             return (
               <Card
                 key={activity.id}
                 className={cn(
                   'transition-opacity',
-                  activity.completedAt && 'opacity-60'
+                  activity.completed_at && 'opacity-60'
                 )}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     <button
                       onClick={() => toggleMutation.mutate(activity.id)}
+                      disabled={!!activity.completed_at}
                       className={cn(
                         'mt-1 flex-shrink-0 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors',
-                        activity.completedAt
+                        activity.completed_at
                           ? 'bg-primary border-primary text-primary-foreground'
                           : 'border-muted-foreground hover:border-primary'
                       )}
                     >
-                      {activity.completedAt && <Check className="h-3 w-3" />}
+                      {activity.completed_at && <Check className="h-3 w-3" />}
                     </button>
 
                     <div className="flex-1 min-w-0">
@@ -174,9 +153,9 @@ export default function Activities() {
                       </div>
                       <p className={cn(
                         'font-medium mt-1',
-                        activity.completedAt && 'line-through'
+                        activity.completed_at && 'line-through'
                       )}>
-                        {activity.title}
+                        {activity.subject}
                       </p>
                       {activity.description && (
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -184,8 +163,8 @@ export default function Activities() {
                         </p>
                       )}
                       <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                        {activity.dueAt && (
-                          <span>{formatDate(activity.dueAt)}</span>
+                        {activity.due_date && (
+                          <span>{formatDate(activity.due_date)}</span>
                         )}
                         {activity.contact && (
                           <Link
@@ -200,7 +179,7 @@ export default function Activities() {
                             to={`/deals/${activity.deal.id}`}
                             className="hover:text-primary"
                           >
-                            {activity.deal.title}
+                            {activity.deal.name}
                           </Link>
                         )}
                       </div>

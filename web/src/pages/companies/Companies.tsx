@@ -1,7 +1,10 @@
+// ABOUTME: Companies list page with search functionality
+// ABOUTME: Displays all companies with contact/deal counts
+
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getCompanies } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,34 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { Plus, Search, Globe, Users } from 'lucide-react';
 
-interface Company {
-  id: string;
-  name: string;
-  domain?: string;
-  industry?: string;
-  _count?: {
-    contacts: number;
-    deals: number;
-  };
-  createdAt: string;
-}
-
-interface CompaniesResponse {
-  data: Company[];
-  pagination: {
-    total: number;
-    limit: number;
-    cursor: string | null;
-    hasMore: boolean;
-  };
-}
-
 export default function Companies() {
   const [search, setSearch] = useState('');
 
-  const { data, isLoading } = useQuery({
+  const { data: companies, isLoading } = useQuery({
     queryKey: ['companies', search],
-    queryFn: () => api.get<CompaniesResponse>(`/companies?search=${search}&limit=50`),
+    queryFn: () => getCompanies(search || undefined),
   });
 
   return (
@@ -45,7 +26,7 @@ export default function Companies() {
         <div>
           <h1 className="text-3xl font-bold">Companies</h1>
           <p className="text-muted-foreground">
-            {data?.pagination.total || 0} companies
+            {companies?.length || 0} companies
           </p>
         </div>
         <Button asChild>
@@ -78,7 +59,7 @@ export default function Companies() {
             </Card>
           ))}
         </div>
-      ) : !data?.data.length ? (
+      ) : !companies?.length ? (
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-muted-foreground">
@@ -88,7 +69,7 @@ export default function Companies() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {data.data.map((company) => (
+          {companies.map((company) => (
             <Link key={company.id} to={`/companies/${company.id}`}>
               <Card className="hover:border-primary transition-colors">
                 <CardHeader className="pb-2">
@@ -98,20 +79,18 @@ export default function Companies() {
                   )}
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {company.domain && (
+                  {company.website && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Globe className="h-3 w-3" />
-                      {company.domain}
+                      {company.website}
                     </div>
                   )}
-                  {company._count && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="h-3 w-3" />
-                      {company._count.contacts} contacts, {company._count.deals} deals
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    {company.contacts_count} contacts, {company.deals_count} deals
+                  </div>
                   <p className="text-xs text-muted-foreground pt-2">
-                    Added {formatDate(company.createdAt)}
+                    Added {formatDate(company.created_at)}
                   </p>
                 </CardContent>
               </Card>

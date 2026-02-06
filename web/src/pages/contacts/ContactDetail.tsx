@@ -1,29 +1,20 @@
+// ABOUTME: Contact detail page showing contact info and company
+// ABOUTME: Displays all contact information with links to related records
+
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getContact } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
-import { ArrowLeft, Mail, Phone, Building2, User } from 'lucide-react';
-
-interface Contact {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  title?: string;
-  company?: { id: string; name: string };
-  owner: { id: string; name: string; email: string };
-  createdAt: string;
-  updatedAt: string;
-}
+import { ArrowLeft, Mail, Phone, Building2 } from 'lucide-react';
 
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
 
-  const { data, isLoading, error } = useQuery({
+  const { data: contact, isLoading, error } = useQuery({
     queryKey: ['contact', id],
-    queryFn: () => api.get<{ data: Contact }>(`/contacts/${id}?include=company`),
+    queryFn: () => getContact(id!),
     enabled: !!id,
   });
 
@@ -36,7 +27,7 @@ export default function ContactDetail() {
     );
   }
 
-  if (error || !data?.data) {
+  if (error || !contact) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" asChild>
@@ -53,8 +44,6 @@ export default function ContactDetail() {
       </div>
     );
   }
-
-  const contact = data.data;
 
   return (
     <div className="space-y-6">
@@ -105,10 +94,6 @@ export default function ContactDetail() {
                 </Link>
               </div>
             )}
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span>Owner: {contact.owner.name}</span>
-            </div>
           </CardContent>
         </Card>
 
@@ -119,11 +104,11 @@ export default function ContactDetail() {
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Created</p>
-              <p>{formatDate(contact.createdAt)}</p>
+              <p>{formatDate(contact.created_at)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Last Updated</p>
-              <p>{formatDate(contact.updatedAt)}</p>
+              <p>{formatDate(contact.updated_at)}</p>
             </div>
           </CardContent>
         </Card>

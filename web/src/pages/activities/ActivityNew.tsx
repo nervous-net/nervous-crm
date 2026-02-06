@@ -1,10 +1,13 @@
+// ABOUTME: Create new activity form page
+// ABOUTME: Handles activity creation with contact/deal associations
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getContacts, getDeals, createActivity } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,38 +17,28 @@ import { ArrowLeft } from 'lucide-react';
 
 const activitySchema = z.object({
   type: z.enum(['call', 'email', 'meeting', 'task']),
-  title: z.string().min(1, 'Title is required').max(200),
+  subject: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional().or(z.literal('')),
-  dueAt: z.string().optional().or(z.literal('')),
-  contactId: z.string().optional().or(z.literal('')),
-  dealId: z.string().optional().or(z.literal('')),
+  due_date: z.string().optional().or(z.literal('')),
+  contact_id: z.string().optional().or(z.literal('')),
+  deal_id: z.string().optional().or(z.literal('')),
 });
 
 type ActivityForm = z.infer<typeof activitySchema>;
-
-interface Contact {
-  id: string;
-  name: string;
-}
-
-interface Deal {
-  id: string;
-  title: string;
-}
 
 export default function ActivityNew() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: contactsData } = useQuery({
+  const { data: contacts } = useQuery({
     queryKey: ['contacts-list'],
-    queryFn: () => api.get<{ data: Contact[] }>('/contacts?limit=100'),
+    queryFn: () => getContacts(),
   });
 
-  const { data: dealsData } = useQuery({
+  const { data: deals } = useQuery({
     queryKey: ['deals-list'],
-    queryFn: () => api.get<{ data: Deal[] }>('/deals?limit=100'),
+    queryFn: () => getDeals(),
   });
 
   const {
@@ -56,25 +49,24 @@ export default function ActivityNew() {
     resolver: zodResolver(activitySchema),
     defaultValues: {
       type: 'task',
-      title: '',
+      subject: '',
       description: '',
-      dueAt: '',
-      contactId: '',
-      dealId: '',
+      due_date: '',
+      contact_id: '',
+      deal_id: '',
     },
   });
 
   const createMutation = useMutation({
     mutationFn: (data: ActivityForm) => {
-      const payload = {
+      return createActivity({
         type: data.type,
-        title: data.title,
+        subject: data.subject,
         description: data.description || undefined,
-        dueAt: data.dueAt ? new Date(data.dueAt).toISOString() : undefined,
-        contactId: data.contactId || undefined,
-        dealId: data.dealId || undefined,
-      };
-      return api.post('/activities', payload);
+        due_date: data.due_date ? new Date(data.due_date).toISOString() : undefined,
+        contact_id: data.contact_id || undefined,
+        deal_id: data.deal_id || undefined,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
@@ -132,14 +124,14 @@ export default function ActivityNew() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
+              <Label htmlFor="subject">Title *</Label>
               <Input
-                id="title"
+                id="subject"
                 placeholder="Follow up on proposal"
-                {...register('title')}
+                {...register('subject')}
               />
-              {errors.title && (
-                <p className="text-sm text-destructive">{errors.title.message}</p>
+              {errors.subject && (
+                <p className="text-sm text-destructive">{errors.subject.message}</p>
               )}
             </div>
 
@@ -157,26 +149,26 @@ export default function ActivityNew() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dueAt">Due Date</Label>
+              <Label htmlFor="due_date">Due Date</Label>
               <Input
-                id="dueAt"
+                id="due_date"
                 type="datetime-local"
-                {...register('dueAt')}
+                {...register('due_date')}
               />
-              {errors.dueAt && (
-                <p className="text-sm text-destructive">{errors.dueAt.message}</p>
+              {errors.due_date && (
+                <p className="text-sm text-destructive">{errors.due_date.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contactId">Related Contact</Label>
+              <Label htmlFor="contact_id">Related Contact</Label>
               <select
-                id="contactId"
-                {...register('contactId')}
+                id="contact_id"
+                {...register('contact_id')}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">No contact</option>
-                {contactsData?.data.map((contact) => (
+                {contacts?.map((contact) => (
                   <option key={contact.id} value={contact.id}>
                     {contact.name}
                   </option>
@@ -185,16 +177,16 @@ export default function ActivityNew() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dealId">Related Deal</Label>
+              <Label htmlFor="deal_id">Related Deal</Label>
               <select
-                id="dealId"
-                {...register('dealId')}
+                id="deal_id"
+                {...register('deal_id')}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">No deal</option>
-                {dealsData?.data.map((deal) => (
+                {deals?.map((deal) => (
                   <option key={deal.id} value={deal.id}>
-                    {deal.title}
+                    {deal.name}
                   </option>
                 ))}
               </select>

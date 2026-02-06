@@ -1,10 +1,13 @@
+// ABOUTME: Create new contact form page
+// ABOUTME: Handles contact creation with company selection
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getCompanies, createContact } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,24 +22,19 @@ const contactSchema = z.object({
   email: z.preprocess(emptyToUndefined, z.string().email('Invalid email').optional()),
   phone: z.preprocess(emptyToUndefined, z.string().max(50).optional()),
   title: z.preprocess(emptyToUndefined, z.string().max(100).optional()),
-  companyId: z.preprocess(emptyToUndefined, z.string().optional()),
+  company_id: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 type ContactForm = z.infer<typeof contactSchema>;
-
-interface Company {
-  id: string;
-  name: string;
-}
 
 export default function ContactNew() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: companiesData } = useQuery({
+  const { data: companies } = useQuery({
     queryKey: ['companies-list'],
-    queryFn: () => api.get<{ data: Company[] }>('/companies?limit=100'),
+    queryFn: () => getCompanies(),
   });
 
   const {
@@ -50,12 +48,18 @@ export default function ContactNew() {
       email: '',
       phone: '',
       title: '',
-      companyId: '',
+      company_id: '',
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: ContactForm) => api.post('/contacts', data),
+    mutationFn: (data: ContactForm) => createContact({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      title: data.title,
+      company_id: data.company_id,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast({ title: 'Contact created successfully' });
@@ -146,14 +150,14 @@ export default function ContactNew() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="companyId">Company</Label>
+              <Label htmlFor="company_id">Company</Label>
               <select
-                id="companyId"
-                {...register('companyId')}
+                id="company_id"
+                {...register('company_id')}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">No company</option>
-                {companiesData?.data.map((company) => (
+                {companies?.map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}
                   </option>

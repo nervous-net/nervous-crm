@@ -1,29 +1,21 @@
+// ABOUTME: Company detail page showing company info and related records
+// ABOUTME: Displays contacts and deals associated with the company
+
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getCompany } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { ArrowLeft, Globe, Users, Handshake } from 'lucide-react';
 
-interface Company {
-  id: string;
-  name: string;
-  domain?: string;
-  industry?: string;
-  contacts?: Array<{ id: string; name: string; email?: string }>;
-  deals?: Array<{ id: string; title: string; stage: string }>;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export default function CompanyDetail() {
   const { id } = useParams<{ id: string }>();
 
-  const { data, isLoading, error } = useQuery({
+  const { data: company, isLoading, error } = useQuery({
     queryKey: ['company', id],
-    queryFn: () => api.get<{ data: Company }>(`/companies/${id}?include=contacts,deals`),
+    queryFn: () => getCompany(id!),
     enabled: !!id,
   });
 
@@ -36,7 +28,7 @@ export default function CompanyDetail() {
     );
   }
 
-  if (error || !data?.data) {
+  if (error || !company) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" asChild>
@@ -53,8 +45,6 @@ export default function CompanyDetail() {
       </div>
     );
   }
-
-  const company = data.data;
 
   return (
     <div className="space-y-6">
@@ -81,26 +71,26 @@ export default function CompanyDetail() {
             <CardTitle>Company Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {company.domain && (
+            {company.website && (
               <div className="flex items-center gap-3">
                 <Globe className="h-4 w-4 text-muted-foreground" />
                 <a
-                  href={`https://${company.domain}`}
+                  href={`https://${company.website}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
                 >
-                  {company.domain}
+                  {company.website}
                 </a>
               </div>
             )}
             <div>
               <p className="text-sm text-muted-foreground">Created</p>
-              <p>{formatDate(company.createdAt)}</p>
+              <p>{formatDate(company.created_at)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Last Updated</p>
-              <p>{formatDate(company.updatedAt)}</p>
+              <p>{formatDate(company.updated_at)}</p>
             </div>
           </CardContent>
         </Card>
@@ -152,7 +142,7 @@ export default function CompanyDetail() {
                     to={`/deals/${deal.id}`}
                     className="block p-3 rounded border hover:border-primary transition-colors"
                   >
-                    <p className="text-sm font-medium">{deal.title}</p>
+                    <p className="text-sm font-medium">{deal.name}</p>
                     <Badge variant="secondary" className="mt-1">
                       {deal.stage}
                     </Badge>

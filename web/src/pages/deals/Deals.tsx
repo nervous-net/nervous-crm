@@ -1,27 +1,14 @@
+// ABOUTME: Deals pipeline page with kanban board layout
+// ABOUTME: Displays deals organized by stage with total values
+
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getDealsPipeline } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { Plus, DollarSign } from 'lucide-react';
-
-interface Deal {
-  id: string;
-  title: string;
-  value?: number;
-  company?: { id: string; name: string };
-  contact?: { id: string; name: string };
-  owner: { id: string; name: string };
-}
-
-interface PipelineStage {
-  stage: string;
-  deals: Deal[];
-  count: number;
-  totalValue: number;
-}
 
 const stageLabels: Record<string, string> = {
   lead: 'Lead',
@@ -42,9 +29,9 @@ const stageColors: Record<string, string> = {
 };
 
 export default function Deals() {
-  const { data, isLoading } = useQuery({
+  const { data: pipeline, isLoading } = useQuery({
     queryKey: ['deals-pipeline'],
-    queryFn: () => api.get<{ data: PipelineStage[] }>('/deals/pipeline'),
+    queryFn: getDealsPipeline,
   });
 
   if (isLoading) {
@@ -64,9 +51,9 @@ export default function Deals() {
     );
   }
 
-  const pipeline = data?.data || [];
-  const activeStages = pipeline.filter(s => !['won', 'lost'].includes(s.stage));
-  const closedStages = pipeline.filter(s => ['won', 'lost'].includes(s.stage));
+  const stages = pipeline || [];
+  const activeStages = stages.filter(s => !['won', 'lost'].includes(s.stage));
+  const closedStages = stages.filter(s => ['won', 'lost'].includes(s.stage));
 
   return (
     <div className="space-y-6">
@@ -85,7 +72,6 @@ export default function Deals() {
         </Button>
       </div>
 
-      {/* Kanban Board */}
       <div className="flex gap-4 overflow-x-auto pb-4">
         {[...activeStages, ...closedStages].map((stage) => (
           <div key={stage.stage} className="flex-shrink-0 w-72">
@@ -111,11 +97,11 @@ export default function Deals() {
                     <Link key={deal.id} to={`/deals/${deal.id}`}>
                       <Card className="bg-background hover:border-primary transition-colors cursor-pointer">
                         <CardContent className="p-3">
-                          <p className="font-medium text-sm truncate">{deal.title}</p>
+                          <p className="font-medium text-sm truncate">{deal.name}</p>
                           {deal.value && (
                             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                               <DollarSign className="h-3 w-3" />
-                              {formatCurrency(deal.value)}
+                              {formatCurrency(Number(deal.value))}
                             </div>
                           )}
                           {deal.company && (
