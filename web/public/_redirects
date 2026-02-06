@@ -1,1 +1,5 @@
-/*    /index.html   200
+# Landing page at root
+/  /landing.html  200
+
+# SPA catch-all for app routes
+/*  /index.html  200
