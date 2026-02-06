@@ -1,5 +1,5 @@
 // ABOUTME: Handles magic link redirects from Supabase email OTP auth
-// ABOUTME: Exchanges the PKCE code from the URL for a session, then redirects
+// ABOUTME: Waits for Supabase to detect the session from the URL hash, then redirects to dashboard
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,47 +9,34 @@ export default function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    async function handleCallback() {
-      // Supabase PKCE flow puts the code in the URL query params
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) {
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-        console.error('Code exchange failed:', error);
+    // With implicit flow, Supabase auto-detects the access_token in the URL hash
+    // via detectSessionInUrl: true. We just listen for the auth state change.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        subscription.unsubscribe();
+        navigate('/dashboard', { replace: true });
       }
+    });
 
-      // Also handle hash-based redirects (older Supabase flows)
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-
-      if (accessToken) {
-        // Hash-based flow: Supabase client auto-detects and sets session
-        // Wait for onAuthStateChange to fire
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-          if (event === 'SIGNED_IN') {
-            subscription.unsubscribe();
-            navigate('/dashboard', { replace: true });
-          }
-        });
-
-        // Fallback timeout
-        setTimeout(() => {
-          subscription.unsubscribe();
-          navigate('/login', { replace: true });
-        }, 5000);
-        return;
+    // Also check if there's already an active session (in case the event fired before we subscribed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        subscription.unsubscribe();
+        navigate('/dashboard', { replace: true });
       }
+    });
 
-      // No code or token found — redirect to login
+    // Fallback: if nothing happens after 10 seconds, redirect to login
+    const timeout = setTimeout(() => {
+      subscription.unsubscribe();
+      console.error('Auth callback timed out — no session detected');
       navigate('/login', { replace: true });
-    }
+    }, 10000);
 
-    handleCallback();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [navigate]);
 
   return (
