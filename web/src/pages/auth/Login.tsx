@@ -50,7 +50,7 @@ export default function Login() {
     setIsLoading(true);
     try {
       await verifyOtp(email, otpCode);
-      navigate('/');
+      navigate('/dashboard');
     } catch (error) {
       toast({
         title: 'Verification failed',

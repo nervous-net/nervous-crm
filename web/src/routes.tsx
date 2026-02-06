@@ -52,7 +52,7 @@ export const router = createBrowserRouter([
   {
     element: <DashboardLayout />,
     children: [
-      { path: '/', element: withSuspense(Dashboard) },
+      { path: '/dashboard', element: withSuspense(Dashboard) },
       { path: '/contacts', element: withSuspense(Contacts) },
       { path: '/contacts/new', element: withSuspense(ContactNew) },
       { path: '/contacts/:id', element: withSuspense(ContactDetail) },

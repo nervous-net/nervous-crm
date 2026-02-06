@@ -3,6 +3,13 @@
   command = "npm run build"
   publish = "dist"
 
+# Serve landing page at root
+[[redirects]]
+  from = "/"
+  to = "/landing.html"
+  status = 200
+
+# SPA catch-all for app routes (login, register, dashboard, etc.)
 [[redirects]]
   from = "/*"
   to = "/index.html"

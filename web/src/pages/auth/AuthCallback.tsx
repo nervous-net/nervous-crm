@@ -17,7 +17,7 @@ export default function AuthCallback() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
-          navigate('/', { replace: true });
+          navigate('/dashboard', { replace: true });
           return;
         }
         console.error('Code exchange failed:', error);
@@ -33,7 +33,7 @@ export default function AuthCallback() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
           if (event === 'SIGNED_IN') {
             subscription.unsubscribe();
-            navigate('/', { replace: true });
+            navigate('/dashboard', { replace: true });
           }
         });
 

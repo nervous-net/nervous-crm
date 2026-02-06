@@ -52,7 +52,7 @@ export default function Register() {
     setIsLoading(true);
     try {
       await verifyOtp(email, otpCode);
-      navigate('/');
+      navigate('/dashboard');
     } catch (error) {
       toast({
         title: 'Verification failed',

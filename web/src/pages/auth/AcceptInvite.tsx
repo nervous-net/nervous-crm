@@ -183,7 +183,7 @@ export default function AcceptInvite() {
         title: 'Welcome!',
         description: `You've joined ${inviteInfo.teamName}.`,
       });
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       toast({
         title: 'Verification failed',

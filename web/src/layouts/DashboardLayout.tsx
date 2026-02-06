@@ -14,7 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Companies', href: '/companies', icon: Building2 },
   { name: 'Deals', href: '/deals', icon: Handshake },
@@ -75,7 +75,7 @@ export function DashboardLayout() {
         <nav className="flex-1 px-4 py-4 space-y-1">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href ||
-              (item.href !== '/' && location.pathname.startsWith(item.href));
+              location.pathname.startsWith(item.href + '/');
 
             return (
               <Link
