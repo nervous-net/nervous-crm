@@ -595,6 +595,15 @@ export async function transferOwnership(newOwnerId: string) {
   if (error) throw error;
 }
 
+export async function sendInviteEmail(params: { email: string; teamName: string; role: string; inviteToken: string }) {
+  const { data, error } = await supabase.functions.invoke('send-invite-email', {
+    body: params,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function updateProfile(data: { name?: string }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');

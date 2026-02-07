@@ -13,6 +13,7 @@ import {
   createInvite,
   cancelInvite,
   transferOwnership,
+  sendInviteEmail,
 } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,11 +67,28 @@ export default function TeamMembers() {
   const createInviteMutation = useMutation({
     mutationFn: ({ email, role }: { email: string; role: 'admin' | 'member' | 'viewer' }) =>
       createInvite(email, role),
-    onSuccess: () => {
+    onSuccess: async (invite) => {
       queryClient.invalidateQueries({ queryKey: ['team-invites'] });
       setInviteEmail('');
       setInviteRole('member');
       toast({ title: 'Invite created' });
+
+      // Best-effort email send — invite exists regardless of email outcome
+      try {
+        await sendInviteEmail({
+          email: invite.email,
+          teamName: profile?.teamName ?? 'Your team',
+          role: invite.role,
+          inviteToken: invite.token,
+        });
+        toast({ title: 'Invite email sent' });
+      } catch {
+        toast({
+          title: 'Invite created, but email failed to send',
+          description: 'You can share the invite link manually.',
+          variant: 'destructive',
+        });
+      }
     },
     onError: () => {
       toast({ title: 'Failed to create invite', variant: 'destructive' });
