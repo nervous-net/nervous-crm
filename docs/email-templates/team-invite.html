@@ -1,0 +1,119 @@
+<!--
+ABOUTME: Team invite email template with Dossier branding, sent via Resend edge function.
+ABOUTME: Reference for the HTML inlined in supabase/functions/send-invite-email/index.ts.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>You're invited to Dossier</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #FAF7F2; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased;">
+
+  <!-- Outer wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #FAF7F2;">
+    <tr>
+      <td align="center" style="padding: 40px 16px;">
+
+        <!-- Inner card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(26, 35, 50, 0.08);">
+
+          <!-- Yellow tab bar -->
+          <tr>
+            <td style="background-color: #FFD600; height: 6px; font-size: 0; line-height: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding: 32px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <!-- Folder icon (simple CSS version for email compat) -->
+                  <td style="width: 28px; height: 24px; background-color: #FFD600; border: 2px solid #1976D2; border-radius: 2px 6px 4px 4px; margin-right: 8px;" width="28" height="24">&nbsp;</td>
+                  <td style="padding-left: 10px; font-family: 'Archivo', Arial, sans-serif; font-weight: 800; font-size: 22px; color: #1A2332; letter-spacing: -0.5px;">dossier</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Heading -->
+          <tr>
+            <td align="center" style="padding: 28px 40px 0;">
+              <h1 style="margin: 0; font-family: 'Archivo', Arial, sans-serif; font-weight: 800; font-size: 24px; color: #1A2332; line-height: 1.2;">You're invited!</h1>
+            </td>
+          </tr>
+
+          <!-- Body text -->
+          <tr>
+            <td align="center" style="padding: 12px 40px 0;">
+              <p style="margin: 0; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; color: #3D4F63; line-height: 1.6;">
+                <strong>{{ teamName }}</strong> invited you to join their team as <strong>{{ role }}</strong> on Dossier &mdash; the CRM that keeps your relationships organized.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA button -->
+          <tr>
+            <td align="center" style="padding: 28px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="background-color: #1976D2; border-radius: 50px; padding: 14px 32px;">
+                    <a href="{{ inviteLink }}" target="_blank" style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; display: inline-block;">Accept Invite &rarr;</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Expiry note -->
+          <tr>
+            <td align="center" style="padding: 16px 40px 0;">
+              <p style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: #7A8A9E; line-height: 1.5;">
+                This invite expires in 7 days.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Safety note -->
+          <tr>
+            <td align="center" style="padding: 24px 40px 32px;">
+              <p style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: #7A8A9E; line-height: 1.5;">
+                Didn't expect this? Just ignore this email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Inner card -->
+
+        <!-- Footer -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px;">
+          <tr>
+            <td align="center" style="padding: 24px 40px;">
+              <p style="margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; color: #7A8A9E; line-height: 1.5;">
+                Powered by <a href="https://nervous.net" target="_blank" style="color: #1976D2; text-decoration: none; font-weight: 600;">nervous</a> energy
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
