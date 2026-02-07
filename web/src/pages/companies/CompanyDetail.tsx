@@ -62,7 +62,9 @@ export default function CompanyDetail() {
             )}
           </div>
         </div>
-        <Button variant="outline">Edit Company</Button>
+        <Button variant="outline" asChild>
+          <Link to={`/companies/${company.id}/edit`}>Edit Company</Link>
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

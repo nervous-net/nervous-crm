@@ -11,12 +11,15 @@ const AuthCallback = lazy(() => import('./pages/auth/AuthCallback'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Contacts = lazy(() => import('./pages/contacts/Contacts'));
 const ContactDetail = lazy(() => import('./pages/contacts/ContactDetail'));
+const ContactEdit = lazy(() => import('./pages/contacts/ContactEdit'));
 const ContactNew = lazy(() => import('./pages/contacts/ContactNew'));
 const Companies = lazy(() => import('./pages/companies/Companies'));
 const CompanyDetail = lazy(() => import('./pages/companies/CompanyDetail'));
+const CompanyEdit = lazy(() => import('./pages/companies/CompanyEdit'));
 const CompanyNew = lazy(() => import('./pages/companies/CompanyNew'));
 const Deals = lazy(() => import('./pages/deals/Deals'));
 const DealDetail = lazy(() => import('./pages/deals/DealDetail'));
+const DealEdit = lazy(() => import('./pages/deals/DealEdit'));
 const DealNew = lazy(() => import('./pages/deals/DealNew'));
 const Activities = lazy(() => import('./pages/activities/Activities'));
 const ActivityNew = lazy(() => import('./pages/activities/ActivityNew'));
@@ -58,12 +61,15 @@ export const router = createBrowserRouter([
       { path: '/contacts', element: withSuspense(Contacts) },
       { path: '/contacts/new', element: withSuspense(ContactNew) },
       { path: '/contacts/:id', element: withSuspense(ContactDetail) },
+      { path: '/contacts/:id/edit', element: withSuspense(ContactEdit) },
       { path: '/companies', element: withSuspense(Companies) },
       { path: '/companies/new', element: withSuspense(CompanyNew) },
       { path: '/companies/:id', element: withSuspense(CompanyDetail) },
+      { path: '/companies/:id/edit', element: withSuspense(CompanyEdit) },
       { path: '/deals', element: withSuspense(Deals) },
       { path: '/deals/new', element: withSuspense(DealNew) },
       { path: '/deals/:id', element: withSuspense(DealDetail) },
+      { path: '/deals/:id/edit', element: withSuspense(DealEdit) },
       { path: '/activities', element: withSuspense(Activities) },
       { path: '/activities/new', element: withSuspense(ActivityNew) },
       { path: '/activities/:id', element: withSuspense(ActivityEdit) },

@@ -88,7 +88,9 @@ export default function DealDetail() {
             )}
           </div>
         </div>
-        <Button variant="outline">Edit Deal</Button>
+        <Button variant="outline" asChild>
+          <Link to={`/deals/${deal.id}/edit`}>Edit Deal</Link>
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

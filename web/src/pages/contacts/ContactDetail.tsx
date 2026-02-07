@@ -61,7 +61,9 @@ export default function ContactDetail() {
             )}
           </div>
         </div>
-        <Button variant="outline">Edit Contact</Button>
+        <Button variant="outline" asChild>
+          <Link to={`/contacts/${contact.id}/edit`}>Edit Contact</Link>
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
