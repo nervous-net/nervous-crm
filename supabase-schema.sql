@@ -72,7 +72,7 @@ CREATE TABLE activities (
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   deal_id UUID REFERENCES deals(id) ON DELETE SET NULL,
   contact_id UUID REFERENCES contacts(id) ON DELETE SET NULL,
-  assigned_to UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  assigned_to UUID REFERENCES profiles(id) ON DELETE SET NULL,
   type TEXT NOT NULL CHECK (type IN ('task', 'call', 'email', 'meeting')),
   subject TEXT NOT NULL,
   description TEXT,
@@ -86,7 +86,7 @@ CREATE TABLE deal_notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
-  author_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  author_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -96,7 +96,7 @@ CREATE TABLE deal_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
-  profile_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(deal_id, profile_id)
 );
