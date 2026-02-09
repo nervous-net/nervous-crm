@@ -239,6 +239,7 @@ export type Database = {
           team_id: string
           deal_id: string | null
           contact_id: string | null
+          assigned_to: string | null
           type: 'task' | 'call' | 'email' | 'meeting'
           subject: string
           description: string | null
@@ -251,6 +252,7 @@ export type Database = {
           team_id: string
           deal_id?: string | null
           contact_id?: string | null
+          assigned_to?: string | null
           type: 'task' | 'call' | 'email' | 'meeting'
           subject: string
           description?: string | null
@@ -263,6 +265,7 @@ export type Database = {
           team_id?: string
           deal_id?: string | null
           contact_id?: string | null
+          assigned_to?: string | null
           type?: 'task' | 'call' | 'email' | 'meeting'
           subject?: string
           description?: string | null
@@ -290,6 +293,108 @@ export type Database = {
             columns: ['contact_id']
             isOneToOne: false
             referencedRelation: 'contacts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'activities_assigned_to_fkey'
+            columns: ['assigned_to']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      deal_notes: {
+        Row: {
+          id: string
+          team_id: string
+          deal_id: string
+          author_id: string | null
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          deal_id: string
+          author_id?: string | null
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          team_id?: string
+          deal_id?: string
+          author_id?: string | null
+          content?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'deal_notes_team_id_fkey'
+            columns: ['team_id']
+            isOneToOne: false
+            referencedRelation: 'teams'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'deal_notes_deal_id_fkey'
+            columns: ['deal_id']
+            isOneToOne: false
+            referencedRelation: 'deals'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'deal_notes_author_id_fkey'
+            columns: ['author_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      deal_members: {
+        Row: {
+          id: string
+          team_id: string
+          deal_id: string
+          profile_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          deal_id: string
+          profile_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          team_id?: string
+          deal_id?: string
+          profile_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'deal_members_team_id_fkey'
+            columns: ['team_id']
+            isOneToOne: false
+            referencedRelation: 'teams'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'deal_members_deal_id_fkey'
+            columns: ['deal_id']
+            isOneToOne: false
+            referencedRelation: 'deals'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'deal_members_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           }
         ]

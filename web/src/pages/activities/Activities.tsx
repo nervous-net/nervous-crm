@@ -4,10 +4,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getActivities, getUpcomingActivities, getOverdueActivities, completeActivity } from '@/lib/db';
+import { getActivities, getUpcomingActivities, getOverdueActivities, getMyActivities, completeActivity } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
-import { Plus, Check, Clock, AlertCircle, Phone, Mail, Calendar, FileText } from 'lucide-react';
+import { Plus, Check, Clock, AlertCircle, Phone, Mail, Calendar, FileText, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const activityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -25,7 +25,7 @@ const activityIconColors: Record<string, string> = {
 };
 
 export default function Activities() {
-  const [filter, setFilter] = useState<'all' | 'upcoming' | 'overdue'>('all');
+  const [filter, setFilter] = useState<'all' | 'upcoming' | 'overdue' | 'mine'>('all');
   const queryClient = useQueryClient();
 
   const { data: activities, isLoading } = useQuery({
@@ -36,6 +36,9 @@ export default function Activities() {
       }
       if (filter === 'overdue') {
         return getOverdueActivities();
+      }
+      if (filter === 'mine') {
+        return getMyActivities();
       }
       return getActivities();
     },
@@ -92,6 +95,15 @@ export default function Activities() {
         >
           <AlertCircle className="h-4 w-4 mr-1" />
           Overdue
+        </Button>
+        <Button
+          variant={filter === 'mine' ? 'default' : 'outline'}
+          size="sm"
+          className="rounded-full"
+          onClick={() => setFilter('mine')}
+        >
+          <UserCircle className="h-4 w-4 mr-1" />
+          Mine
         </Button>
       </div>
 
@@ -151,7 +163,7 @@ export default function Activities() {
                     {activity.subject}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {[activity.contact?.name, activity.deal?.name].filter(Boolean).join(' · ') || activity.description || 'No details'}
+                    {[activity.contact?.name, activity.deal?.name, activity.assignee?.name ? `→ ${activity.assignee.name}` : null].filter(Boolean).join(' · ') || activity.description || 'No details'}
                   </p>
                 </Link>
 

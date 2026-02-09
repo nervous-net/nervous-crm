@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getActivity, getContacts, getDeals, updateActivity, deleteActivity } from '@/lib/db';
+import { getActivity, getContacts, getDeals, getTeamMembers, updateActivity, deleteActivity } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,7 @@ const activitySchema = z.object({
   due_date: z.string().optional().or(z.literal('')),
   contact_id: z.string().optional().or(z.literal('')),
   deal_id: z.string().optional().or(z.literal('')),
+  assigned_to: z.string().optional().or(z.literal('')),
 });
 
 type ActivityForm = z.infer<typeof activitySchema>;
@@ -55,6 +56,11 @@ export default function ActivityEdit() {
     queryFn: () => getDeals(),
   });
 
+  const { data: teamMembers } = useQuery({
+    queryKey: ['team-members'],
+    queryFn: () => getTeamMembers(),
+  });
+
   const {
     register,
     handleSubmit,
@@ -68,6 +74,7 @@ export default function ActivityEdit() {
       due_date: toDatetimeLocal(activity.due_date),
       contact_id: activity.contact_id || '',
       deal_id: activity.deal_id || '',
+      assigned_to: activity.assigned_to || '',
     } : undefined,
   });
 
@@ -80,6 +87,7 @@ export default function ActivityEdit() {
         due_date: data.due_date ? new Date(data.due_date).toISOString() : undefined,
         contact_id: data.contact_id || undefined,
         deal_id: data.deal_id || undefined,
+        assigned_to: data.assigned_to || null,
       });
     },
     onSuccess: () => {
@@ -247,6 +255,22 @@ export default function ActivityEdit() {
                 {deals?.map((deal) => (
                   <option key={deal.id} value={deal.id}>
                     {deal.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="assigned_to">Assigned To</Label>
+              <select
+                id="assigned_to"
+                {...register('assigned_to')}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">Unassigned</option>
+                {teamMembers?.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
                   </option>
                 ))}
               </select>

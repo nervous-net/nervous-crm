@@ -324,15 +324,22 @@ export async function deleteDeal(id: string) {
 // ACTIVITIES
 // ============================================
 
+export interface ActivityAssignee {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface ActivityWithRelations extends Tables<'activities'> {
   contact: Tables<'contacts'> | null;
   deal: Tables<'deals'> | null;
+  assignee: ActivityAssignee | null;
 }
 
 export async function getActivities(options?: { contactId?: string; dealId?: string }) {
   let query = supabase
     .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*)')
+    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
     .order('due_date', { ascending: true });
 
   if (options?.contactId) {
@@ -354,7 +361,7 @@ export async function getUpcomingActivities(days: number = 7) {
 
   const { data, error } = await supabase
     .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*)')
+    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
     .is('completed_at', null)
     .gte('due_date', now.toISOString())
     .lte('due_date', future.toISOString())
@@ -369,7 +376,7 @@ export async function getOverdueActivities() {
 
   const { data, error } = await supabase
     .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*)')
+    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
     .is('completed_at', null)
     .lt('due_date', now.toISOString())
     .order('due_date', { ascending: true });
@@ -381,7 +388,7 @@ export async function getOverdueActivities() {
 export async function getActivity(id: string) {
   const { data, error } = await supabase
     .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*)')
+    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
     .eq('id', id)
     .single();
 
@@ -396,12 +403,13 @@ export async function createActivity(data: {
   due_date?: string;
   contact_id?: string;
   deal_id?: string;
+  assigned_to?: string;
 }) {
   const teamId = await getTeamId();
   const { data: activity, error } = await supabase
     .from('activities')
     .insert({ ...data, team_id: teamId })
-    .select('*, contact:contacts(*), deal:deals(*)')
+    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
     .single();
 
   if (error) throw error;
@@ -416,12 +424,13 @@ export async function updateActivity(id: string, data: {
   completed_at?: string;
   contact_id?: string;
   deal_id?: string;
+  assigned_to?: string | null;
 }) {
   const { data: activity, error } = await supabase
     .from('activities')
     .update(data)
     .eq('id', id)
-    .select('*, contact:contacts(*), deal:deals(*)')
+    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
     .single();
 
   if (error) throw error;
@@ -437,6 +446,116 @@ export async function deleteActivity(id: string) {
     .from('activities')
     .delete()
     .eq('id', id);
+
+  if (error) throw error;
+}
+
+export async function getMyActivities() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('activities')
+    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
+    .eq('assigned_to', user.id)
+    .is('completed_at', null)
+    .order('due_date', { ascending: true });
+
+  if (error) throw error;
+  return data as ActivityWithRelations[];
+}
+
+export async function getDealActivities(dealId: string) {
+  const { data, error } = await supabase
+    .from('activities')
+    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
+    .eq('deal_id', dealId)
+    .order('due_date', { ascending: true });
+
+  if (error) throw error;
+  return data as ActivityWithRelations[];
+}
+
+// ============================================
+// DEAL NOTES
+// ============================================
+
+export interface DealNoteWithAuthor extends Tables<'deal_notes'> {
+  author: { id: string; name: string; email: string } | null;
+}
+
+export async function getDealNotes(dealId: string) {
+  const { data, error } = await supabase
+    .from('deal_notes')
+    .select('*, author:profiles!deal_notes_author_id_fkey(id, name, email)')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data as DealNoteWithAuthor[];
+}
+
+export async function createDealNote(dealId: string, content: string) {
+  const teamId = await getTeamId();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('deal_notes')
+    .insert({ team_id: teamId, deal_id: dealId, author_id: user.id, content })
+    .select('*, author:profiles!deal_notes_author_id_fkey(id, name, email)')
+    .single();
+
+  if (error) throw error;
+  return data as DealNoteWithAuthor;
+}
+
+export async function deleteDealNote(id: string) {
+  const { error } = await supabase
+    .from('deal_notes')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
+// ============================================
+// DEAL MEMBERS
+// ============================================
+
+export interface DealMemberWithProfile extends Tables<'deal_members'> {
+  profile: { id: string; name: string; email: string; role: string } | null;
+}
+
+export async function getDealMembers(dealId: string) {
+  const { data, error } = await supabase
+    .from('deal_members')
+    .select('*, profile:profiles!deal_members_profile_id_fkey(id, name, email, role)')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data as DealMemberWithProfile[];
+}
+
+export async function addDealMember(dealId: string, profileId: string) {
+  const teamId = await getTeamId();
+  const { data, error } = await supabase
+    .from('deal_members')
+    .insert({ team_id: teamId, deal_id: dealId, profile_id: profileId })
+    .select('*, profile:profiles!deal_members_profile_id_fkey(id, name, email, role)')
+    .single();
+
+  if (error) throw error;
+  return data as DealMemberWithProfile;
+}
+
+export async function removeDealMember(dealId: string, profileId: string) {
+  const { error } = await supabase
+    .from('deal_members')
+    .delete()
+    .eq('deal_id', dealId)
+    .eq('profile_id', profileId);
 
   if (error) throw error;
 }
