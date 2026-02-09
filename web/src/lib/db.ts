@@ -561,6 +561,54 @@ export async function removeDealMember(dealId: string, profileId: string) {
 }
 
 // ============================================
+// DEAL EMAILS
+// ============================================
+
+export interface DealEmailWithSender extends Tables<'deal_emails'> {
+  sender: { id: string; name: string; email: string } | null;
+}
+
+export async function getDealEmails(dealId: string) {
+  const { data, error } = await supabase
+    .from('deal_emails')
+    .select('*, sender:profiles!deal_emails_sender_id_fkey(id, name, email)')
+    .eq('deal_id', dealId)
+    .order('sent_at', { ascending: true });
+
+  if (error) throw error;
+  return data as DealEmailWithSender[];
+}
+
+export async function sendDealEmail(params: {
+  deal_id: string;
+  to: Array<{ email: string; name?: string }>;
+  cc?: Array<{ email: string; name?: string }>;
+  subject: string;
+  body_html?: string;
+  body_text?: string;
+  in_reply_to?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke('send-deal-email', {
+    body: params,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function reassignDealEmail(emailId: string, dealId: string) {
+  const { data, error } = await supabase
+    .from('deal_emails')
+    .update({ deal_id: dealId })
+    .eq('id', emailId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
 // DASHBOARD
 // ============================================
 

@@ -101,6 +101,27 @@ CREATE TABLE deal_members (
   UNIQUE(deal_id, profile_id)
 );
 
+-- Deal Emails (shared inbox per deal)
+CREATE TABLE deal_emails (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  from_address TEXT NOT NULL,
+  from_name TEXT,
+  to_addresses JSONB NOT NULL DEFAULT '[]',
+  cc_addresses JSONB NOT NULL DEFAULT '[]',
+  subject TEXT NOT NULL,
+  body_html TEXT,
+  body_text TEXT,
+  direction TEXT NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+  resend_email_id TEXT,
+  message_id TEXT,
+  in_reply_to TEXT,
+  sent_at TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Invites
 CREATE TABLE invites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -148,6 +169,12 @@ CREATE INDEX idx_deal_notes_deal_id ON deal_notes(deal_id);
 CREATE INDEX idx_deal_members_team_id ON deal_members(team_id);
 CREATE INDEX idx_deal_members_deal_id ON deal_members(deal_id);
 CREATE INDEX idx_deal_members_profile_id ON deal_members(profile_id);
+CREATE INDEX idx_deal_emails_team_id ON deal_emails(team_id);
+CREATE INDEX idx_deal_emails_deal_id ON deal_emails(deal_id);
+CREATE INDEX idx_deal_emails_direction ON deal_emails(direction);
+CREATE INDEX idx_deal_emails_from_address ON deal_emails(from_address);
+CREATE INDEX idx_deal_emails_sent_at ON deal_emails(sent_at);
+CREATE INDEX idx_deal_emails_message_id ON deal_emails(message_id);
 CREATE INDEX idx_audit_logs_team_id ON audit_logs(team_id);
 CREATE INDEX idx_invites_token ON invites(token);
 CREATE INDEX idx_invites_team_id ON invites(team_id);
@@ -164,6 +191,7 @@ ALTER TABLE deals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deal_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deal_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deal_emails ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
@@ -321,6 +349,26 @@ CREATE POLICY "Team members can insert deal members"
 
 CREATE POLICY "Team members can delete deal members"
   ON deal_members FOR DELETE
+  USING (team_id = get_team_id());
+
+-- ============================================
+-- RLS POLICIES: Deal Emails
+-- ============================================
+
+CREATE POLICY "Team members can read deal emails"
+  ON deal_emails FOR SELECT
+  USING (team_id = get_team_id());
+
+CREATE POLICY "Team members can insert deal emails"
+  ON deal_emails FOR INSERT
+  WITH CHECK (team_id = get_team_id());
+
+CREATE POLICY "Team members can update deal emails"
+  ON deal_emails FOR UPDATE
+  USING (team_id = get_team_id());
+
+CREATE POLICY "Team members can delete deal emails"
+  ON deal_emails FOR DELETE
   USING (team_id = get_team_id());
 
 -- ============================================

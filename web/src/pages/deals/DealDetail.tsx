@@ -39,6 +39,7 @@ import {
   Trash2,
   UserPlus,
 } from 'lucide-react';
+import DealInbox from './DealInbox';
 
 const stageLabels: Record<string, string> = {
   lead: 'Lead',
@@ -362,6 +363,9 @@ export default function DealDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* Inbox */}
+      <DealInbox dealId={deal.id} contactEmail={deal.contact?.email} />
 
       {/* Team Members + Notes */}
       <div className="grid gap-6 lg:grid-cols-2">

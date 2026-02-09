@@ -399,6 +399,88 @@ export type Database = {
           }
         ]
       }
+      deal_emails: {
+        Row: {
+          id: string
+          team_id: string
+          deal_id: string
+          sender_id: string | null
+          from_address: string
+          from_name: string | null
+          to_addresses: Json
+          cc_addresses: Json
+          subject: string
+          body_html: string | null
+          body_text: string | null
+          direction: 'inbound' | 'outbound'
+          resend_email_id: string | null
+          message_id: string | null
+          in_reply_to: string | null
+          sent_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          deal_id: string
+          sender_id?: string | null
+          from_address: string
+          from_name?: string | null
+          to_addresses?: Json
+          cc_addresses?: Json
+          subject: string
+          body_html?: string | null
+          body_text?: string | null
+          direction: 'inbound' | 'outbound'
+          resend_email_id?: string | null
+          message_id?: string | null
+          in_reply_to?: string | null
+          sent_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          team_id?: string
+          deal_id?: string
+          sender_id?: string | null
+          from_address?: string
+          from_name?: string | null
+          to_addresses?: Json
+          cc_addresses?: Json
+          subject?: string
+          body_html?: string | null
+          body_text?: string | null
+          direction?: 'inbound' | 'outbound'
+          resend_email_id?: string | null
+          message_id?: string | null
+          in_reply_to?: string | null
+          sent_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'deal_emails_team_id_fkey'
+            columns: ['team_id']
+            isOneToOne: false
+            referencedRelation: 'teams'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'deal_emails_deal_id_fkey'
+            columns: ['deal_id']
+            isOneToOne: false
+            referencedRelation: 'deals'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'deal_emails_sender_id_fkey'
+            columns: ['sender_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       invites: {
         Row: {
           id: string
