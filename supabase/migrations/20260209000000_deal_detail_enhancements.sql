@@ -28,19 +28,19 @@ ALTER TABLE deal_notes ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Team members can read deal notes"
   ON deal_notes FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = public.get_team_id());
 
 CREATE POLICY "Team members can insert deal notes"
   ON deal_notes FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = public.get_team_id());
 
 CREATE POLICY "Team members can update deal notes"
   ON deal_notes FOR UPDATE
-  USING (team_id = get_my_team_id());
+  USING (team_id = public.get_team_id());
 
 CREATE POLICY "Team members can delete deal notes"
   ON deal_notes FOR DELETE
-  USING (team_id = get_my_team_id());
+  USING (team_id = public.get_team_id());
 
 -- ============================================
 -- 3. Deal members junction table
@@ -63,12 +63,12 @@ ALTER TABLE deal_members ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Team members can read deal members"
   ON deal_members FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = public.get_team_id());
 
 CREATE POLICY "Team members can insert deal members"
   ON deal_members FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = public.get_team_id());
 
 CREATE POLICY "Team members can delete deal members"
   ON deal_members FOR DELETE
-  USING (team_id = get_my_team_id());
+  USING (team_id = public.get_team_id());

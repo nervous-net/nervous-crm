@@ -171,7 +171,7 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 -- HELPER FUNCTION: Get user's team_id
 -- ============================================
 
-CREATE OR REPLACE FUNCTION get_my_team_id()
+CREATE OR REPLACE FUNCTION get_team_id()
 RETURNS UUID AS $$
   SELECT team_id FROM profiles WHERE id = auth.uid()
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
@@ -182,12 +182,12 @@ $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 CREATE POLICY "Users can read their own team"
   ON teams FOR SELECT
-  USING (id = get_my_team_id());
+  USING (id = get_team_id());
 
 CREATE POLICY "Owners can update their team"
   ON teams FOR UPDATE
   USING (
-    id = get_my_team_id() AND
+    id = get_team_id() AND
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'owner')
   );
 
@@ -197,7 +197,7 @@ CREATE POLICY "Owners can update their team"
 
 CREATE POLICY "Users can read profiles in their team"
   ON profiles FOR SELECT
-  USING (team_id = get_my_team_id() OR id = auth.uid());
+  USING (team_id = get_team_id() OR id = auth.uid());
 
 CREATE POLICY "Users can update their own profile"
   ON profiles FOR UPDATE
@@ -213,19 +213,19 @@ CREATE POLICY "System can insert profiles"
 
 CREATE POLICY "Team members can read companies"
   ON companies FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can insert companies"
   ON companies FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = get_team_id());
 
 CREATE POLICY "Team members can update companies"
   ON companies FOR UPDATE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can delete companies"
   ON companies FOR DELETE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 -- ============================================
 -- RLS POLICIES: Contacts
@@ -233,19 +233,19 @@ CREATE POLICY "Team members can delete companies"
 
 CREATE POLICY "Team members can read contacts"
   ON contacts FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can insert contacts"
   ON contacts FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = get_team_id());
 
 CREATE POLICY "Team members can update contacts"
   ON contacts FOR UPDATE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can delete contacts"
   ON contacts FOR DELETE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 -- ============================================
 -- RLS POLICIES: Deals
@@ -253,19 +253,19 @@ CREATE POLICY "Team members can delete contacts"
 
 CREATE POLICY "Team members can read deals"
   ON deals FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can insert deals"
   ON deals FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = get_team_id());
 
 CREATE POLICY "Team members can update deals"
   ON deals FOR UPDATE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can delete deals"
   ON deals FOR DELETE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 -- ============================================
 -- RLS POLICIES: Activities
@@ -273,19 +273,19 @@ CREATE POLICY "Team members can delete deals"
 
 CREATE POLICY "Team members can read activities"
   ON activities FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can insert activities"
   ON activities FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = get_team_id());
 
 CREATE POLICY "Team members can update activities"
   ON activities FOR UPDATE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can delete activities"
   ON activities FOR DELETE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 -- ============================================
 -- RLS POLICIES: Deal Notes
@@ -293,19 +293,19 @@ CREATE POLICY "Team members can delete activities"
 
 CREATE POLICY "Team members can read deal notes"
   ON deal_notes FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can insert deal notes"
   ON deal_notes FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = get_team_id());
 
 CREATE POLICY "Team members can update deal notes"
   ON deal_notes FOR UPDATE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can delete deal notes"
   ON deal_notes FOR DELETE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 -- ============================================
 -- RLS POLICIES: Deal Members
@@ -313,15 +313,15 @@ CREATE POLICY "Team members can delete deal notes"
 
 CREATE POLICY "Team members can read deal members"
   ON deal_members FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "Team members can insert deal members"
   ON deal_members FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = get_team_id());
 
 CREATE POLICY "Team members can delete deal members"
   ON deal_members FOR DELETE
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 -- ============================================
 -- RLS POLICIES: Invites
@@ -330,7 +330,7 @@ CREATE POLICY "Team members can delete deal members"
 CREATE POLICY "Team admins can read invites"
   ON invites FOR SELECT
   USING (
-    team_id = get_my_team_id() AND
+    team_id = get_team_id() AND
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('owner', 'admin'))
   );
 
@@ -341,14 +341,14 @@ CREATE POLICY "Anyone can read pending invites"
 CREATE POLICY "Team admins can create invites"
   ON invites FOR INSERT
   WITH CHECK (
-    team_id = get_my_team_id() AND
+    team_id = get_team_id() AND
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('owner', 'admin'))
   );
 
 CREATE POLICY "Team admins can update invites"
   ON invites FOR UPDATE
   USING (
-    team_id = get_my_team_id() AND
+    team_id = get_team_id() AND
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('owner', 'admin'))
   );
 
@@ -366,11 +366,11 @@ CREATE POLICY "Invitees can accept their own invite"
 
 CREATE POLICY "Team members can read audit logs"
   ON audit_logs FOR SELECT
-  USING (team_id = get_my_team_id());
+  USING (team_id = get_team_id());
 
 CREATE POLICY "System can insert audit logs"
   ON audit_logs FOR INSERT
-  WITH CHECK (team_id = get_my_team_id());
+  WITH CHECK (team_id = get_team_id());
 
 -- ============================================
 -- AUTH TRIGGER: Create profile on signup
