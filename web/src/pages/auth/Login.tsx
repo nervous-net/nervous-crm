@@ -1,5 +1,5 @@
-// ABOUTME: Passwordless login page using email OTP (6-digit code or magic link)
-// ABOUTME: Two-step flow: email entry → OTP code verification
+// ABOUTME: Passwordless login page using NS gateway magic link auth.
+// ABOUTME: Two-step flow: email entry, then token verification (auto-verifies in dev mode).
 
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
@@ -31,7 +31,14 @@ export default function Login() {
   const handleSendOtp = useCallback(async () => {
     setIsLoading(true);
     try {
-      await sendOtp(email);
+      const { debugToken } = await sendOtp(email);
+
+      // In dev mode the gateway returns a debug token so we can auto-verify
+      if (debugToken) {
+        await verifyOtp(email, debugToken);
+        return;
+      }
+
       setStep('otp');
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (error) {
@@ -43,7 +50,7 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
-  }, [email, sendOtp]);
+  }, [email, sendOtp, verifyOtp]);
 
   const handleVerifyOtp = async () => {
     setIsLoading(true);
@@ -71,7 +78,7 @@ export default function Login() {
         <CardHeader>
           <CardTitle>Check your email</CardTitle>
           <CardDescription>
-            We sent a 6-digit code to {email}
+            We sent a magic link to {email}
           </CardDescription>
         </CardHeader>
         <form
@@ -82,15 +89,13 @@ export default function Login() {
         >
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="otp">Verification code</Label>
+              <Label htmlFor="otp">Verification token</Label>
               <Input
                 id="otp"
                 type="text"
-                inputMode="numeric"
-                placeholder="123456"
-                maxLength={6}
+                placeholder="Paste token from email"
                 value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setOtpCode(e.target.value.trim())}
                 autoFocus
               />
             </div>
@@ -99,8 +104,8 @@ export default function Login() {
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isLoading || otpCode.length !== 6}>
-              {isLoading ? 'Verifying...' : 'Verify code'}
+            <Button type="submit" className="w-full" disabled={isLoading || !otpCode}>
+              {isLoading ? 'Verifying...' : 'Verify'}
             </Button>
             <div className="flex items-center justify-between w-full text-sm">
               <button
@@ -133,7 +138,7 @@ export default function Login() {
       <CardHeader>
         <CardTitle>Sign in to your account</CardTitle>
         <CardDescription>
-          We'll send you a code to sign in — no password needed
+          We'll send you a magic link to sign in — no password needed
         </CardDescription>
       </CardHeader>
       <form
@@ -157,7 +162,7 @@ export default function Login() {
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="w-full" disabled={isLoading || !email}>
-            {isLoading ? 'Sending code...' : 'Send sign-in code'}
+            {isLoading ? 'Sending...' : 'Send magic link'}
           </Button>
           <p className="text-sm text-muted-foreground">
             Don't have an account?{' '}

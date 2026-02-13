@@ -1,3 +1,6 @@
+// ABOUTME: Convenience hook that provides the AuthContext value.
+// ABOUTME: Throws if used outside of an AuthProvider.
+
 import { useContext } from 'react';
 import { AuthContext } from '@/contexts/AuthContext';
 
