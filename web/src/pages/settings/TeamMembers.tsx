@@ -79,7 +79,7 @@ export default function TeamMembers() {
           email: invite.email,
           teamName: profile?.teamName ?? 'Your team',
           role: invite.role,
-          inviteToken: invite.token,
+          inviteToken: invite.token ?? '',
         });
         toast({ title: 'Invite email sent' });
       } catch {
@@ -281,7 +281,7 @@ export default function TeamMembers() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => copyInviteLink(invite.token)}
+                    onClick={() => copyInviteLink(invite.token ?? '')}
                   >
                     Copy Link
                   </Button>

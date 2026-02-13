@@ -17,7 +17,7 @@ import {
   removeDealMember,
 } from '@/lib/db';
 import type { ActivityWithRelations } from '@/lib/db';
-import { supabase } from '@/lib/supabase';
+import { getStoredUser } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -111,7 +111,7 @@ export default function DealDetail() {
   const { data: currentUser } = useQuery({
     queryKey: ['current-user-id'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = getStoredUser();
       return user;
     },
   });
@@ -138,7 +138,7 @@ export default function DealDetail() {
   });
 
   const deleteNoteMutation = useMutation({
-    mutationFn: (noteId: string) => deleteDealNote(noteId),
+    mutationFn: (noteId: string) => deleteDealNote(id!, noteId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deal-notes', id] });
       toast({ title: 'Note deleted' });
@@ -158,7 +158,7 @@ export default function DealDetail() {
   });
 
   const removeMemberMutation = useMutation({
-    mutationFn: (profileId: string) => removeDealMember(id!, profileId),
+    mutationFn: (memberId: string) => removeDealMember(id!, memberId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deal-members', id] });
       toast({ title: 'Member removed' });
@@ -426,7 +426,7 @@ export default function DealDetail() {
                         </Badge>
                       )}
                       <button
-                        onClick={() => removeMemberMutation.mutate(member.profile_id)}
+                        onClick={() => removeMemberMutation.mutate(member.id)}
                         className="text-muted-foreground hover:text-destructive transition-colors"
                       >
                         <X className="h-4 w-4" />

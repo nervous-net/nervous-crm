@@ -1,22 +1,211 @@
-// ABOUTME: Database operations using Supabase
-// ABOUTME: Provides typed CRUD functions for all CRM entities
+// ABOUTME: Database operations using the Nervous System gateway API.
+// ABOUTME: Provides typed CRUD functions for all CRM entities via REST calls.
 
-import { supabase } from './supabase';
-import type { Tables } from './database.types';
+import { api, getStoredUser } from './supabase';
+import type { Tables, Json } from './database.types';
 
-// Helper to get current user's team_id
-async function getTeamId(): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+// ============================================
+// Gateway response types (internal, not exported)
+// ============================================
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('team_id')
-    .eq('id', user.id)
-    .single();
+interface GatewayCompany {
+  id: string;
+  name: string;
+  domain: string | null;
+  industry: string | null;
+  notes: string | null;
+  contact_count: number;
+  deal_count: number;
+  created_at: string;
+  updated_at: string;
+}
 
-  if (!profile) throw new Error('Profile not found');
-  return profile.team_id;
+interface GatewayCompanyDetail extends GatewayCompany {
+  contacts: GatewayContact[];
+  deals: GatewayDeal[];
+}
+
+interface GatewayContact {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  title: string | null;
+  company_id: string | null;
+  company_name: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface GatewayDeal {
+  id: string;
+  name: string;
+  value: number | null;
+  stage: string;
+  expected_close: string | null;
+  company_id: string | null;
+  company_name: string | null;
+  contact_id: string | null;
+  contact_name: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface GatewayPipelineResponse {
+  stages: Record<string, {
+    count: number;
+    total_value: number;
+    deals: GatewayDeal[];
+  }>;
+}
+
+interface GatewayActivity {
+  id: string;
+  type: string;
+  subject: string;
+  description: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  contact_id: string | null;
+  deal_id: string | null;
+  assigned_to: string | null;
+  created_at: string;
+}
+
+interface GatewayDealNote {
+  id: string;
+  deal_id: string;
+  author_id: string | null;
+  author_name: string | null;
+  content: string;
+  created_at: string;
+}
+
+interface GatewayDealMember {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  created_at: string;
+}
+
+interface GatewayDealEmail {
+  id: string;
+  deal_id: string;
+  sender_id: string | null;
+  from_address: string;
+  from_name: string | null;
+  to_addresses: Json;
+  cc_addresses: Json;
+  subject: string;
+  body_html: string | null;
+  body_text: string | null;
+  direction: string;
+  resend_email_id: string | null;
+  message_id: string | null;
+  in_reply_to: string | null;
+  sent_at: string;
+  created_at: string;
+}
+
+interface GatewayTeamMember {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
+}
+
+interface GatewayInvite {
+  id: string;
+  email: string;
+  role: string;
+  token?: string;
+  status: string;
+  expires_at: string;
+  created_at: string;
+}
+
+// ============================================
+// Response mappers (gateway shape -> standalone shape)
+// ============================================
+
+function mapCompanyFromGateway(gw: GatewayCompany): Tables<'companies'> {
+  return {
+    id: gw.id,
+    team_id: '',
+    name: gw.name,
+    website: gw.domain,
+    industry: gw.industry,
+    notes: gw.notes,
+    created_at: gw.created_at,
+    updated_at: gw.updated_at,
+    deleted_at: null,
+  };
+}
+
+function mapContactFromGateway(gw: GatewayContact): ContactWithCompany {
+  return {
+    id: gw.id,
+    team_id: '',
+    company_id: gw.company_id,
+    name: gw.name,
+    email: gw.email,
+    phone: gw.phone,
+    title: gw.title,
+    notes: gw.notes,
+    created_at: gw.created_at,
+    updated_at: gw.updated_at,
+    deleted_at: null,
+    company: gw.company_id
+      ? { id: gw.company_id, team_id: '', name: gw.company_name || '', website: null, industry: null, notes: null, created_at: '', updated_at: '', deleted_at: null }
+      : null,
+  };
+}
+
+function mapDealFromGateway(gw: GatewayDeal): DealWithRelations {
+  return {
+    id: gw.id,
+    team_id: '',
+    company_id: gw.company_id,
+    contact_id: gw.contact_id,
+    name: gw.name,
+    value: gw.value,
+    stage: gw.stage as Tables<'deals'>['stage'],
+    expected_close: gw.expected_close,
+    notes: gw.notes,
+    created_at: gw.created_at,
+    updated_at: gw.updated_at,
+    deleted_at: null,
+    company: gw.company_id
+      ? { id: gw.company_id, team_id: '', name: gw.company_name || '', website: null, industry: null, notes: null, created_at: '', updated_at: '', deleted_at: null }
+      : null,
+    contact: gw.contact_id
+      ? { id: gw.contact_id, team_id: '', company_id: null, name: gw.contact_name || '', email: null, phone: null, title: null, notes: null, created_at: '', updated_at: '', deleted_at: null }
+      : null,
+  };
+}
+
+function mapActivityFromGateway(gw: GatewayActivity): ActivityWithRelations {
+  return {
+    id: gw.id,
+    team_id: '',
+    deal_id: gw.deal_id,
+    contact_id: gw.contact_id,
+    assigned_to: gw.assigned_to,
+    type: gw.type as Tables<'activities'>['type'],
+    subject: gw.subject,
+    description: gw.description,
+    due_date: gw.due_date,
+    completed_at: gw.completed_at,
+    created_at: gw.created_at,
+    // Gateway returns flat IDs only, no nested objects
+    contact: null,
+    deal: null,
+    assignee: null,
+  };
 }
 
 // ============================================
@@ -33,92 +222,79 @@ export interface CompanyWithRelations extends Tables<'companies'> {
   deals: Tables<'deals'>[];
 }
 
-export async function getCompanies(search?: string) {
-  let query = supabase
-    .from('companies')
-    .select('*')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+export async function getCompanies(search?: string): Promise<CompanyWithCounts[]> {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  const query = params.toString();
+  const path = `/api/crm/companies${query ? `?${query}` : ''}`;
 
-  if (search) {
-    query = query.ilike('name', `%${search}%`);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  // Get counts for each company
-  const companiesWithCounts = await Promise.all(
-    (data || []).map(async (company) => {
-      const [contactsRes, dealsRes] = await Promise.all([
-        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('company_id', company.id).is('deleted_at', null),
-        supabase.from('deals').select('id', { count: 'exact', head: true }).eq('company_id', company.id).is('deleted_at', null),
-      ]);
-      return {
-        ...company,
-        contacts_count: contactsRes.count || 0,
-        deals_count: dealsRes.count || 0,
-      };
-    })
-  );
-
-  return companiesWithCounts;
+  const data = await api.get<GatewayCompany[]>(path);
+  return data.map((gw) => ({
+    ...mapCompanyFromGateway(gw),
+    contacts_count: gw.contact_count,
+    deals_count: gw.deal_count,
+  }));
 }
 
-export async function getCompany(id: string) {
-  const { data: company, error } = await supabase
-    .from('companies')
-    .select('*')
-    .eq('id', id)
-    .is('deleted_at', null)
-    .single();
-
-  if (error) throw error;
-
-  // Fetch related contacts and deals
-  const [contactsRes, dealsRes] = await Promise.all([
-    supabase.from('contacts').select('*').eq('company_id', id).is('deleted_at', null),
-    supabase.from('deals').select('*').eq('company_id', id).is('deleted_at', null),
-  ]);
-
+export async function getCompany(id: string): Promise<CompanyWithRelations> {
+  const gw = await api.get<GatewayCompanyDetail>(`/api/crm/companies/${id}`);
+  const base = mapCompanyFromGateway(gw);
   return {
-    ...company,
-    contacts: contactsRes.data || [],
-    deals: dealsRes.data || [],
-  } as CompanyWithRelations;
+    ...base,
+    contacts: (gw.contacts || []).map((c) => ({
+      id: c.id,
+      team_id: '',
+      company_id: c.company_id,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      title: c.title,
+      notes: c.notes,
+      created_at: c.created_at,
+      updated_at: c.updated_at,
+      deleted_at: null,
+    })),
+    deals: (gw.deals || []).map((d) => ({
+      id: d.id,
+      team_id: '',
+      company_id: d.company_id,
+      contact_id: d.contact_id,
+      name: d.name,
+      value: d.value,
+      stage: d.stage as Tables<'deals'>['stage'],
+      expected_close: d.expected_close,
+      notes: d.notes,
+      created_at: d.created_at,
+      updated_at: d.updated_at,
+      deleted_at: null,
+    })),
+  };
 }
 
 export async function createCompany(data: { name: string; website?: string; industry?: string; notes?: string }) {
-  const teamId = await getTeamId();
-  const { data: company, error } = await supabase
-    .from('companies')
-    .insert({ ...data, team_id: teamId })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return company;
+  const body = {
+    name: data.name,
+    domain: data.website,
+    industry: data.industry,
+    notes: data.notes,
+  };
+  const gw = await api.post<GatewayCompany>('/api/crm/companies', body);
+  return mapCompanyFromGateway(gw);
 }
 
 export async function updateCompany(id: string, data: { name?: string; website?: string; industry?: string; notes?: string }) {
-  const { data: company, error } = await supabase
-    .from('companies')
-    .update(data)
-    .eq('id', id)
-    .select()
-    .single();
+  const body: Record<string, unknown> = {};
+  if (data.name !== undefined) body.name = data.name;
+  if (data.website !== undefined) body.domain = data.website;
+  if (data.industry !== undefined) body.industry = data.industry;
+  if (data.notes !== undefined) body.notes = data.notes;
 
-  if (error) throw error;
-  return company;
+  const gw = await api.put<GatewayCompany>(`/api/crm/companies/${id}`, body);
+  return mapCompanyFromGateway(gw);
 }
 
 export async function deleteCompany(id: string) {
-  const { error } = await supabase
-    .from('companies')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id);
-
-  if (error) throw error;
+  await api.delete(`/api/crm/companies/${id}`);
 }
 
 // ============================================
@@ -129,71 +305,41 @@ export interface ContactWithCompany extends Tables<'contacts'> {
   company: Tables<'companies'> | null;
 }
 
-export async function getContacts(options?: { search?: string; companyId?: string; limit?: number }) {
-  let query = supabase
-    .from('contacts')
-    .select('*, company:companies(*)')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+export async function getContacts(options?: { search?: string; companyId?: string; limit?: number }): Promise<ContactWithCompany[]> {
+  const params = new URLSearchParams();
+  if (options?.search) params.set('search', options.search);
+  if (options?.companyId) params.set('company_id', options.companyId);
+  const query = params.toString();
+  const path = `/api/crm/contacts${query ? `?${query}` : ''}`;
 
-  if (options?.search) {
-    query = query.or(`name.ilike.%${options.search}%,email.ilike.%${options.search}%`);
-  }
-  if (options?.companyId) {
-    query = query.eq('company_id', options.companyId);
-  }
+  const data = await api.get<GatewayContact[]>(path);
+  let contacts = data.map(mapContactFromGateway);
+
+  // Gateway may not support limit param, apply client-side
   if (options?.limit) {
-    query = query.limit(options.limit);
+    contacts = contacts.slice(0, options.limit);
   }
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as ContactWithCompany[];
+  return contacts;
 }
 
-export async function getContact(id: string) {
-  const { data, error } = await supabase
-    .from('contacts')
-    .select('*, company:companies(*)')
-    .eq('id', id)
-    .is('deleted_at', null)
-    .single();
-
-  if (error) throw error;
-  return data as ContactWithCompany;
+export async function getContact(id: string): Promise<ContactWithCompany> {
+  const gw = await api.get<GatewayContact>(`/api/crm/contacts/${id}`);
+  return mapContactFromGateway(gw);
 }
 
-export async function createContact(data: { name: string; email?: string; phone?: string; title?: string; company_id?: string; notes?: string }) {
-  const teamId = await getTeamId();
-  const { data: contact, error } = await supabase
-    .from('contacts')
-    .insert({ ...data, team_id: teamId })
-    .select('*, company:companies(*)')
-    .single();
-
-  if (error) throw error;
-  return contact as ContactWithCompany;
+export async function createContact(data: { name: string; email?: string; phone?: string; title?: string; company_id?: string; notes?: string }): Promise<ContactWithCompany> {
+  const gw = await api.post<GatewayContact>('/api/crm/contacts', data);
+  return mapContactFromGateway(gw);
 }
 
-export async function updateContact(id: string, data: { name?: string; email?: string; phone?: string; title?: string; company_id?: string; notes?: string }) {
-  const { data: contact, error } = await supabase
-    .from('contacts')
-    .update(data)
-    .eq('id', id)
-    .select('*, company:companies(*)')
-    .single();
-
-  if (error) throw error;
-  return contact as ContactWithCompany;
+export async function updateContact(id: string, data: { name?: string; email?: string; phone?: string; title?: string; company_id?: string; notes?: string }): Promise<ContactWithCompany> {
+  const gw = await api.put<GatewayContact>(`/api/crm/contacts/${id}`, data);
+  return mapContactFromGateway(gw);
 }
 
 export async function deleteContact(id: string) {
-  const { error } = await supabase
-    .from('contacts')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id);
-
-  if (error) throw error;
+  await api.delete(`/api/crm/contacts/${id}`);
 }
 
 // ============================================
@@ -215,60 +361,37 @@ export interface PipelineStage {
 const STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'] as const;
 type DealStage = typeof STAGES[number];
 
-export async function getDeals(options?: { stage?: DealStage; companyId?: string }) {
-  let query = supabase
-    .from('deals')
-    .select('*, company:companies(*), contact:contacts(*)')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+export async function getDeals(options?: { stage?: DealStage; companyId?: string }): Promise<DealWithRelations[]> {
+  const params = new URLSearchParams();
+  if (options?.stage) params.set('stage', options.stage);
+  if (options?.companyId) params.set('company_id', options.companyId);
+  const query = params.toString();
+  const path = `/api/crm/deals${query ? `?${query}` : ''}`;
 
-  if (options?.stage) {
-    query = query.eq('stage', options.stage);
-  }
-  if (options?.companyId) {
-    query = query.eq('company_id', options.companyId);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as DealWithRelations[];
+  const data = await api.get<GatewayDeal[]>(path);
+  return data.map(mapDealFromGateway);
 }
 
 export async function getDealsPipeline(): Promise<PipelineStage[]> {
-  const { data, error } = await supabase
-    .from('deals')
-    .select('*, company:companies(*), contact:contacts(*)')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+  const data = await api.get<GatewayPipelineResponse>('/api/crm/deals/pipeline');
 
-  if (error) throw error;
-
-  const deals = data as DealWithRelations[];
-
-  // Group by stage
-  const pipeline = STAGES.map(stage => {
-    const stageDeals = deals.filter(d => d.stage === stage);
+  return STAGES.map((stage) => {
+    const stageData = data.stages[stage];
+    if (!stageData) {
+      return { stage, deals: [], count: 0, totalValue: 0 };
+    }
     return {
       stage,
-      deals: stageDeals,
-      count: stageDeals.length,
-      totalValue: stageDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0),
+      deals: (stageData.deals || []).map(mapDealFromGateway),
+      count: stageData.count,
+      totalValue: stageData.total_value,
     };
   });
-
-  return pipeline;
 }
 
-export async function getDeal(id: string) {
-  const { data, error } = await supabase
-    .from('deals')
-    .select('*, company:companies(*), contact:contacts(*)')
-    .eq('id', id)
-    .is('deleted_at', null)
-    .single();
-
-  if (error) throw error;
-  return data as DealWithRelations;
+export async function getDeal(id: string): Promise<DealWithRelations> {
+  const gw = await api.get<GatewayDeal>(`/api/crm/deals/${id}`);
+  return mapDealFromGateway(gw);
 }
 
 export async function createDeal(data: {
@@ -279,16 +402,9 @@ export async function createDeal(data: {
   company_id?: string;
   contact_id?: string;
   notes?: string;
-}) {
-  const teamId = await getTeamId();
-  const { data: deal, error } = await supabase
-    .from('deals')
-    .insert({ ...data, team_id: teamId })
-    .select('*, company:companies(*), contact:contacts(*)')
-    .single();
-
-  if (error) throw error;
-  return deal as DealWithRelations;
+}): Promise<DealWithRelations> {
+  const gw = await api.post<GatewayDeal>('/api/crm/deals', data);
+  return mapDealFromGateway(gw);
 }
 
 export async function updateDeal(id: string, data: {
@@ -299,25 +415,13 @@ export async function updateDeal(id: string, data: {
   company_id?: string;
   contact_id?: string;
   notes?: string;
-}) {
-  const { data: deal, error } = await supabase
-    .from('deals')
-    .update(data)
-    .eq('id', id)
-    .select('*, company:companies(*), contact:contacts(*)')
-    .single();
-
-  if (error) throw error;
-  return deal as DealWithRelations;
+}): Promise<DealWithRelations> {
+  const gw = await api.put<GatewayDeal>(`/api/crm/deals/${id}`, data);
+  return mapDealFromGateway(gw);
 }
 
 export async function deleteDeal(id: string) {
-  const { error } = await supabase
-    .from('deals')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id);
-
-  if (error) throw error;
+  await api.delete(`/api/crm/deals/${id}`);
 }
 
 // ============================================
@@ -336,64 +440,53 @@ export interface ActivityWithRelations extends Tables<'activities'> {
   assignee: ActivityAssignee | null;
 }
 
-export async function getActivities(options?: { contactId?: string; dealId?: string }) {
-  let query = supabase
-    .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
-    .order('due_date', { ascending: true });
+export async function getActivities(options?: { contactId?: string; dealId?: string }): Promise<ActivityWithRelations[]> {
+  const params = new URLSearchParams();
+  if (options?.contactId) params.set('contact_id', options.contactId);
+  if (options?.dealId) params.set('deal_id', options.dealId);
+  const query = params.toString();
+  const path = `/api/crm/activities${query ? `?${query}` : ''}`;
 
-  if (options?.contactId) {
-    query = query.eq('contact_id', options.contactId);
-  }
-  if (options?.dealId) {
-    query = query.eq('deal_id', options.dealId);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as ActivityWithRelations[];
+  const data = await api.get<GatewayActivity[]>(path);
+  return data.map(mapActivityFromGateway);
 }
 
-export async function getUpcomingActivities(days: number = 7) {
+export async function getUpcomingActivities(days: number = 7): Promise<ActivityWithRelations[]> {
+  // Gateway does not support date filtering, fetch all incomplete and filter client-side
+  const data = await api.get<GatewayActivity[]>('/api/crm/activities');
   const now = new Date();
   const future = new Date();
   future.setDate(future.getDate() + days);
 
-  const { data, error } = await supabase
-    .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
-    .is('completed_at', null)
-    .gte('due_date', now.toISOString())
-    .lte('due_date', future.toISOString())
-    .order('due_date', { ascending: true });
-
-  if (error) throw error;
-  return data as ActivityWithRelations[];
+  return data
+    .filter((a) => {
+      if (a.completed_at) return false;
+      if (!a.due_date) return false;
+      const due = new Date(a.due_date);
+      return due >= now && due <= future;
+    })
+    .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
+    .map(mapActivityFromGateway);
 }
 
-export async function getOverdueActivities() {
+export async function getOverdueActivities(): Promise<ActivityWithRelations[]> {
+  // Gateway does not support date filtering, fetch all incomplete and filter client-side
+  const data = await api.get<GatewayActivity[]>('/api/crm/activities');
   const now = new Date();
 
-  const { data, error } = await supabase
-    .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
-    .is('completed_at', null)
-    .lt('due_date', now.toISOString())
-    .order('due_date', { ascending: true });
-
-  if (error) throw error;
-  return data as ActivityWithRelations[];
+  return data
+    .filter((a) => {
+      if (a.completed_at) return false;
+      if (!a.due_date) return false;
+      return new Date(a.due_date) < now;
+    })
+    .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
+    .map(mapActivityFromGateway);
 }
 
-export async function getActivity(id: string) {
-  const { data, error } = await supabase
-    .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
-    .eq('id', id)
-    .single();
-
-  if (error) throw error;
-  return data as ActivityWithRelations;
+export async function getActivity(id: string): Promise<ActivityWithRelations> {
+  const gw = await api.get<GatewayActivity>(`/api/crm/activities/${id}`);
+  return mapActivityFromGateway(gw);
 }
 
 export async function createActivity(data: {
@@ -404,16 +497,9 @@ export async function createActivity(data: {
   contact_id?: string;
   deal_id?: string;
   assigned_to?: string;
-}) {
-  const teamId = await getTeamId();
-  const { data: activity, error } = await supabase
-    .from('activities')
-    .insert({ ...data, team_id: teamId })
-    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
-    .single();
-
-  if (error) throw error;
-  return activity as ActivityWithRelations;
+}): Promise<ActivityWithRelations> {
+  const gw = await api.post<GatewayActivity>('/api/crm/activities', data);
+  return mapActivityFromGateway(gw);
 }
 
 export async function updateActivity(id: string, data: {
@@ -425,55 +511,38 @@ export async function updateActivity(id: string, data: {
   contact_id?: string;
   deal_id?: string;
   assigned_to?: string | null;
-}) {
-  const { data: activity, error } = await supabase
-    .from('activities')
-    .update(data)
-    .eq('id', id)
-    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
-    .single();
-
-  if (error) throw error;
-  return activity as ActivityWithRelations;
+}): Promise<ActivityWithRelations> {
+  const gw = await api.put<GatewayActivity>(`/api/crm/activities/${id}`, data);
+  return mapActivityFromGateway(gw);
 }
 
-export async function completeActivity(id: string) {
-  return updateActivity(id, { completed_at: new Date().toISOString() });
+export async function completeActivity(id: string): Promise<ActivityWithRelations> {
+  const gw = await api.post<GatewayActivity>(`/api/crm/activities/${id}/complete`);
+  return mapActivityFromGateway(gw);
 }
 
 export async function deleteActivity(id: string) {
-  const { error } = await supabase
-    .from('activities')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw error;
+  await api.delete(`/api/crm/activities/${id}`);
 }
 
-export async function getMyActivities() {
-  const { data: { user } } = await supabase.auth.getUser();
+export async function getMyActivities(): Promise<ActivityWithRelations[]> {
+  const user = getStoredUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
-    .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
-    .eq('assigned_to', user.id)
-    .is('completed_at', null)
-    .order('due_date', { ascending: true });
-
-  if (error) throw error;
-  return data as ActivityWithRelations[];
+  const data = await api.get<GatewayActivity[]>('/api/crm/activities');
+  return data
+    .filter((a) => a.assigned_to === user.id && !a.completed_at)
+    .sort((a, b) => {
+      if (!a.due_date) return 1;
+      if (!b.due_date) return -1;
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    })
+    .map(mapActivityFromGateway);
 }
 
-export async function getDealActivities(dealId: string) {
-  const { data, error } = await supabase
-    .from('activities')
-    .select('*, contact:contacts(*), deal:deals(*), assignee:profiles!activities_assigned_to_fkey(id, name, email)')
-    .eq('deal_id', dealId)
-    .order('due_date', { ascending: true });
-
-  if (error) throw error;
-  return data as ActivityWithRelations[];
+export async function getDealActivities(dealId: string): Promise<ActivityWithRelations[]> {
+  const data = await api.get<GatewayActivity[]>(`/api/crm/activities?deal_id=${dealId}`);
+  return data.map(mapActivityFromGateway);
 }
 
 // ============================================
@@ -484,39 +553,38 @@ export interface DealNoteWithAuthor extends Tables<'deal_notes'> {
   author: { id: string; name: string; email: string } | null;
 }
 
-export async function getDealNotes(dealId: string) {
-  const { data, error } = await supabase
-    .from('deal_notes')
-    .select('*, author:profiles!deal_notes_author_id_fkey(id, name, email)')
-    .eq('deal_id', dealId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data as DealNoteWithAuthor[];
+export async function getDealNotes(dealId: string): Promise<DealNoteWithAuthor[]> {
+  const data = await api.get<GatewayDealNote[]>(`/api/crm/deals/${dealId}/notes`);
+  return data.map((gw) => ({
+    id: gw.id,
+    team_id: '',
+    deal_id: gw.deal_id,
+    author_id: gw.author_id,
+    content: gw.content,
+    created_at: gw.created_at,
+    author: gw.author_id
+      ? { id: gw.author_id, name: gw.author_name || '', email: '' }
+      : null,
+  }));
 }
 
-export async function createDealNote(dealId: string, content: string) {
-  const teamId = await getTeamId();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { data, error } = await supabase
-    .from('deal_notes')
-    .insert({ team_id: teamId, deal_id: dealId, author_id: user.id, content })
-    .select('*, author:profiles!deal_notes_author_id_fkey(id, name, email)')
-    .single();
-
-  if (error) throw error;
-  return data as DealNoteWithAuthor;
+export async function createDealNote(dealId: string, content: string): Promise<DealNoteWithAuthor> {
+  const gw = await api.post<GatewayDealNote>(`/api/crm/deals/${dealId}/notes`, { content });
+  return {
+    id: gw.id,
+    team_id: '',
+    deal_id: gw.deal_id,
+    author_id: gw.author_id,
+    content: gw.content,
+    created_at: gw.created_at,
+    author: gw.author_id
+      ? { id: gw.author_id, name: gw.author_name || '', email: '' }
+      : null,
+  };
 }
 
-export async function deleteDealNote(id: string) {
-  const { error } = await supabase
-    .from('deal_notes')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw error;
+export async function deleteDealNote(dealId: string, noteId: string) {
+  await api.delete(`/api/crm/deals/${dealId}/notes/${noteId}`);
 }
 
 // ============================================
@@ -527,37 +595,42 @@ export interface DealMemberWithProfile extends Tables<'deal_members'> {
   profile: { id: string; name: string; email: string; role: string } | null;
 }
 
-export async function getDealMembers(dealId: string) {
-  const { data, error } = await supabase
-    .from('deal_members')
-    .select('*, profile:profiles!deal_members_profile_id_fkey(id, name, email, role)')
-    .eq('deal_id', dealId)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-  return data as DealMemberWithProfile[];
+export async function getDealMembers(dealId: string): Promise<DealMemberWithProfile[]> {
+  const data = await api.get<GatewayDealMember[]>(`/api/crm/deals/${dealId}/members`);
+  return data.map((gw) => ({
+    id: gw.id,
+    team_id: '',
+    deal_id: dealId,
+    profile_id: gw.user_id,
+    created_at: gw.created_at,
+    profile: {
+      id: gw.user_id,
+      name: gw.name,
+      email: gw.email,
+      role: '',
+    },
+  }));
 }
 
-export async function addDealMember(dealId: string, profileId: string) {
-  const teamId = await getTeamId();
-  const { data, error } = await supabase
-    .from('deal_members')
-    .insert({ team_id: teamId, deal_id: dealId, profile_id: profileId })
-    .select('*, profile:profiles!deal_members_profile_id_fkey(id, name, email, role)')
-    .single();
-
-  if (error) throw error;
-  return data as DealMemberWithProfile;
+export async function addDealMember(dealId: string, profileId: string): Promise<DealMemberWithProfile> {
+  const gw = await api.post<GatewayDealMember>(`/api/crm/deals/${dealId}/members`, { user_id: profileId });
+  return {
+    id: gw.id,
+    team_id: '',
+    deal_id: dealId,
+    profile_id: gw.user_id,
+    created_at: gw.created_at,
+    profile: {
+      id: gw.user_id,
+      name: gw.name,
+      email: gw.email,
+      role: '',
+    },
+  };
 }
 
-export async function removeDealMember(dealId: string, profileId: string) {
-  const { error } = await supabase
-    .from('deal_members')
-    .delete()
-    .eq('deal_id', dealId)
-    .eq('profile_id', profileId);
-
-  if (error) throw error;
+export async function removeDealMember(dealId: string, memberId: string) {
+  await api.delete(`/api/crm/deals/${dealId}/members/${memberId}`);
 }
 
 // ============================================
@@ -568,15 +641,30 @@ export interface DealEmailWithSender extends Tables<'deal_emails'> {
   sender: { id: string; name: string; email: string } | null;
 }
 
-export async function getDealEmails(dealId: string) {
-  const { data, error } = await supabase
-    .from('deal_emails')
-    .select('*, sender:profiles!deal_emails_sender_id_fkey(id, name, email)')
-    .eq('deal_id', dealId)
-    .order('sent_at', { ascending: true });
-
-  if (error) throw error;
-  return data as DealEmailWithSender[];
+export async function getDealEmails(dealId: string): Promise<DealEmailWithSender[]> {
+  const data = await api.get<GatewayDealEmail[]>(`/api/crm/deals/${dealId}/emails`);
+  return data.map((gw) => ({
+    id: gw.id,
+    team_id: '',
+    deal_id: gw.deal_id,
+    sender_id: gw.sender_id,
+    from_address: gw.from_address,
+    from_name: gw.from_name,
+    to_addresses: gw.to_addresses,
+    cc_addresses: gw.cc_addresses,
+    subject: gw.subject,
+    body_html: gw.body_html,
+    body_text: gw.body_text,
+    direction: (gw.direction || 'outbound') as Tables<'deal_emails'>['direction'],
+    resend_email_id: gw.resend_email_id,
+    message_id: gw.message_id,
+    in_reply_to: gw.in_reply_to,
+    sent_at: gw.sent_at,
+    created_at: gw.created_at,
+    sender: gw.sender_id
+      ? { id: gw.sender_id, name: gw.from_name || '', email: gw.from_address }
+      : null,
+  }));
 }
 
 export async function sendDealEmail(params: {
@@ -588,24 +676,21 @@ export async function sendDealEmail(params: {
   body_text?: string;
   in_reply_to?: string;
 }) {
-  const { data, error } = await supabase.functions.invoke('send-deal-email', {
-    body: params,
-  });
-
-  if (error) throw error;
-  return data;
+  const body = {
+    from_address: getStoredUser()?.email || '',
+    from_name: '',
+    to_addresses: params.to.map((t) => t.email),
+    cc_addresses: params.cc?.map((c) => c.email) || [],
+    subject: params.subject,
+    body_html: params.body_html,
+    body_text: params.body_text,
+    in_reply_to: params.in_reply_to,
+  };
+  return api.post(`/api/crm/deals/${params.deal_id}/emails`, body);
 }
 
-export async function reassignDealEmail(emailId: string, dealId: string) {
-  const { data, error } = await supabase
-    .from('deal_emails')
-    .update({ deal_id: dealId })
-    .eq('id', emailId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+export async function reassignDealEmail(_emailId: string, _dealId: string) {
+  throw new Error('Not implemented: reassignDealEmail has no NS gateway endpoint');
 }
 
 // ============================================
@@ -658,16 +743,18 @@ export async function getDashboardData(): Promise<DashboardData> {
 // ============================================
 
 export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = getStoredUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, teams(name)')
-    .eq('id', user.id)
-    .single();
-
-  return profile;
+  return {
+    id: user.id,
+    email: user.email,
+    name: '',
+    role: user.role as 'owner' | 'admin' | 'member' | 'viewer',
+    team_id: user.org_id,
+    created_at: '',
+    teams: { name: '' },
+  };
 }
 
 // ============================================
@@ -675,113 +762,49 @@ export async function getCurrentUser() {
 // ============================================
 
 export async function getTeamMembers() {
-  const teamId = await getTeamId();
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, email, name, role, created_at')
-    .eq('team_id', teamId)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-  return data;
+  const data = await api.get<GatewayTeamMember[]>('/api/team/members');
+  return data.map((m) => ({
+    id: m.id,
+    email: m.email,
+    name: m.name,
+    role: m.role,
+    created_at: m.created_at,
+  }));
 }
 
 export async function updateMemberRole(userId: string, role: 'admin' | 'member' | 'viewer') {
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({ role })
-    .eq('id', userId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  return api.put(`/api/team/members/${userId}/role`, { role });
 }
 
 export async function removeMember(userId: string) {
-  const { error } = await supabase
-    .from('profiles')
-    .delete()
-    .eq('id', userId);
-
-  if (error) throw error;
+  await api.delete(`/api/team/members/${userId}`);
 }
 
 export async function getTeamInvites() {
-  const teamId = await getTeamId();
-  const { data, error } = await supabase
-    .from('invites')
-    .select('*')
-    .eq('team_id', teamId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
+  return api.get<GatewayInvite[]>('/api/team/invites');
 }
 
 export async function createInvite(email: string, role: 'admin' | 'member' | 'viewer') {
-  const teamId = await getTeamId();
-  const token = crypto.randomUUID();
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  const { data, error } = await supabase
-    .from('invites')
-    .insert({
-      team_id: teamId,
-      email,
-      role,
-      token,
-      status: 'pending',
-      expires_at: expiresAt.toISOString(),
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  return api.post<GatewayInvite>('/api/team/invites', { email, role });
 }
 
 export async function cancelInvite(id: string) {
-  const { error } = await supabase
-    .from('invites')
-    .update({ status: 'expired' as const })
-    .eq('id', id);
-
-  if (error) throw error;
+  await api.delete(`/api/team/invites/${id}`);
 }
 
 export async function deleteAccount() {
-  const { error } = await supabase.rpc('delete_own_account');
-  if (error) throw error;
+  throw new Error('Not implemented: deleteAccount has no NS gateway endpoint');
 }
 
-export async function transferOwnership(newOwnerId: string) {
-  const { error } = await supabase.rpc('transfer_ownership', { new_owner_id: newOwnerId });
-  if (error) throw error;
+export async function transferOwnership(_newOwnerId: string) {
+  throw new Error('Not implemented: transferOwnership has no NS gateway endpoint');
 }
 
-export async function sendInviteEmail(params: { email: string; teamName: string; role: string; inviteToken: string }) {
-  const { data, error } = await supabase.functions.invoke('send-invite-email', {
-    body: params,
-  });
-
-  if (error) throw error;
-  return data;
+export async function sendInviteEmail(_params: { email: string; teamName: string; role: string; inviteToken: string }) {
+  // Invite emails are sent server-side by the NS gateway when creating an invite.
+  // This function is kept for interface compatibility but is a no-op.
 }
 
-export async function updateProfile(data: { name?: string }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .update(data)
-    .eq('id', user.id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return profile;
+export async function updateProfile(_data: { name?: string }) {
+  throw new Error('Not implemented: updateProfile has no NS gateway endpoint');
 }
