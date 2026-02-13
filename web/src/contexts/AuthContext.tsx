@@ -1,15 +1,27 @@
-// ABOUTME: Authentication context using Supabase Auth with email OTP (magic link + code)
-// ABOUTME: Manages user session state and provides passwordless auth methods throughout the app
+// ABOUTME: Authentication context using Nervous System gateway magic link auth.
+// ABOUTME: Manages user state and provides passwordless auth methods throughout the app.
 
 import { createContext, useState, useEffect, type ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { User, Session } from '@supabase/supabase-js';
+import {
+  api,
+  getStoredToken,
+  getStoredUser,
+  setStoredAuth,
+  clearStoredAuth,
+} from '@/lib/supabase';
+
+export interface NSUser {
+  id: string;
+  email: string;
+  org_id: string;
+  role: string;
+  name?: string;
+}
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: NSUser | null;
   isLoading: boolean;
-  sendOtp: (email: string, metadata?: Record<string, string>) => Promise<void>;
+  sendOtp: (email: string) => Promise<{ debugToken?: string }>;
   verifyOtp: (email: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -17,66 +29,52 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<NSUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
+    const token = getStoredToken();
+    if (token) {
+      const stored = getStoredUser();
+      if (stored) {
+        setUser(stored);
       }
-    );
-
-    return () => subscription.unsubscribe();
+    }
+    setIsLoading(false);
   }, []);
 
-  const sendOtp = async (email: string, metadata?: Record<string, string>) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: window.location.origin + '/auth/callback',
-        data: metadata,
-      },
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
+  const sendOtp = async (email: string): Promise<{ debugToken?: string }> => {
+    const res = await api.post<{ message: string; _debug_token?: string }>(
+      '/auth/login',
+      { email },
+    );
+    return { debugToken: res._debug_token };
   };
 
   const verifyOtp = async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    });
+    const res = await api.post<{ token: string; user_id: string; org_id: string }>(
+      '/auth/verify',
+      { token },
+    );
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    const nsUser: NSUser = {
+      id: res.user_id,
+      email,
+      org_id: res.org_id,
+      role: 'member',
+    };
+
+    setStoredAuth(res.token, nsUser);
+    setUser(nsUser);
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw new Error(error.message);
-    }
+    clearStoredAuth();
     setUser(null);
-    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, sendOtp, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, sendOtp, verifyOtp, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,9 +1,10 @@
-// ABOUTME: Passwordless registration page using email OTP (6-digit code or magic link)
-// ABOUTME: Two-step flow: name+email+team → OTP code verification
+// ABOUTME: Registration page using NS gateway signup with magic link verification.
+// ABOUTME: Two-step flow: name+email+org name, then token verification (auto-verifies in dev mode).
 
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,11 +14,11 @@ import { toast } from '@/components/ui/use-toast';
 const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function Register() {
-  const { sendOtp, verifyOtp } = useAuth();
+  const { verifyOtp } = useAuth();
   const [step, setStep] = useState<'details' | 'otp'>('details');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [teamName, setTeamName] = useState('');
+  const [orgName, setOrgName] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -30,22 +31,32 @@ export default function Register() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const handleSendOtp = useCallback(async () => {
+  const handleSignup = useCallback(async () => {
     setIsLoading(true);
     try {
-      await sendOtp(email, { name, team_name: teamName });
+      const res = await api.post<{ message: string; _debug_token?: string }>(
+        '/auth/signup',
+        { email, name, org_name: orgName },
+      );
+
+      // In dev mode the gateway returns a debug token so we can auto-verify
+      if (res._debug_token) {
+        await verifyOtp(email, res._debug_token);
+        return;
+      }
+
       setStep('otp');
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (error) {
       toast({
-        title: 'Failed to send code',
+        title: 'Failed to create account',
         description: error instanceof Error ? error.message : 'Please try again',
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [email, name, teamName, sendOtp]);
+  }, [email, name, orgName, verifyOtp]);
 
   const handleVerifyOtp = async () => {
     setIsLoading(true);
@@ -64,10 +75,10 @@ export default function Register() {
 
   const handleResend = async () => {
     if (resendCooldown > 0) return;
-    await handleSendOtp();
+    await handleSignup();
   };
 
-  const isDetailsValid = name.trim() && email.trim() && teamName.trim();
+  const isDetailsValid = name.trim() && email.trim() && orgName.trim();
 
   if (step === 'otp') {
     return (
@@ -75,7 +86,7 @@ export default function Register() {
         <CardHeader>
           <CardTitle>Check your email</CardTitle>
           <CardDescription>
-            We sent a 6-digit code to {email}
+            We sent a verification link to {email}
           </CardDescription>
         </CardHeader>
         <form
@@ -86,15 +97,13 @@ export default function Register() {
         >
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="otp">Verification code</Label>
+              <Label htmlFor="otp">Verification token</Label>
               <Input
                 id="otp"
                 type="text"
-                inputMode="numeric"
-                placeholder="123456"
-                maxLength={6}
+                placeholder="Paste token from email"
                 value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setOtpCode(e.target.value.trim())}
                 autoFocus
               />
             </div>
@@ -103,8 +112,8 @@ export default function Register() {
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isLoading || otpCode.length !== 6}>
-              {isLoading ? 'Verifying...' : 'Verify code'}
+            <Button type="submit" className="w-full" disabled={isLoading || !otpCode}>
+              {isLoading ? 'Verifying...' : 'Verify'}
             </Button>
             <div className="flex items-center justify-between w-full text-sm">
               <button
@@ -137,13 +146,13 @@ export default function Register() {
       <CardHeader>
         <CardTitle>Create your account</CardTitle>
         <CardDescription>
-          No password needed — we'll send you a sign-in code
+          No password needed — we'll send you a magic link
         </CardDescription>
       </CardHeader>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          handleSendOtp();
+          handleSignup();
         }}
       >
         <CardContent className="space-y-4">
@@ -169,19 +178,19 @@ export default function Register() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="teamName">Team name</Label>
+            <Label htmlFor="orgName">Organization name</Label>
             <Input
-              id="teamName"
+              id="orgName"
               placeholder="My Company"
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
               required
             />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="w-full" disabled={isLoading || !isDetailsValid}>
-            {isLoading ? 'Sending code...' : 'Create account'}
+            {isLoading ? 'Creating account...' : 'Create account'}
           </Button>
           <p className="text-sm text-muted-foreground">
             Already have an account?{' '}

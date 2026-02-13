@@ -1,5 +1,5 @@
-// ABOUTME: Handles magic link redirects from Supabase email OTP auth
-// ABOUTME: Waits for Supabase to detect the session from the URL hash, then redirects to dashboard
+// ABOUTME: Handles magic link callback redirects from email verification.
+// ABOUTME: Waits for auth state to resolve, then redirects to dashboard.
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';

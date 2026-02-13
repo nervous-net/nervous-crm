@@ -1,9 +1,9 @@
-// ABOUTME: Hook for fetching the current user's profile and team data from Supabase
-// ABOUTME: Separated from auth context to avoid race conditions during login flow
+// ABOUTME: Hook for fetching the current user's profile and team data from the NS gateway.
+// ABOUTME: Constructs profile from auth context user data and fetches org name via API.
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/supabase';
 
 export interface Profile {
   id: string;
@@ -27,32 +27,34 @@ export function useProfile() {
       return;
     }
 
-    async function fetchProfile() {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*, teams(name)')
-        .eq('id', user!.id)
-        .single();
-
-      if (error) {
-        console.error('Failed to fetch profile:', error);
-        setError(error.message);
-      } else {
-        const teamName = (data.teams as { name: string } | null)?.name || 'Unknown Team';
+    async function fetchOrgName() {
+      try {
+        const org = await api.get<{ id: string; name: string }>('/api/team/org');
         setProfile({
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          teamId: data.team_id,
-          teamName,
-          role: data.role,
+          id: user!.id,
+          email: user!.email,
+          name: user!.name || user!.email,
+          teamId: user!.org_id,
+          teamName: org.name,
+          role: user!.role,
         });
-        setError(null);
+      } catch (err) {
+        // Fall back to a placeholder org name if the API call fails
+        const message = err instanceof Error ? err.message : 'Failed to fetch org';
+        setError(message);
+        setProfile({
+          id: user!.id,
+          email: user!.email,
+          name: user!.name || user!.email,
+          teamId: user!.org_id,
+          teamName: 'My Organization',
+          role: user!.role,
+        });
       }
       setLoading(false);
     }
 
-    fetchProfile();
+    fetchOrgName();
   }, [user]);
 
   return { profile, loading, error };
